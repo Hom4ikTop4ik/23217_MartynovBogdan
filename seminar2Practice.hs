@@ -21,8 +21,8 @@ sumOddFib n | odd'(fib(n)) = sumOddFib(n-1) + fib(n)
 -- magic number
 magicHelp :: Int -> Int
 magicHelp n | n < 10 = n
-            | otherwise = (n `mod` 10) + (magicNum(n `div` 10))
+            | otherwise = (n `mod` 10) + (magicHelp(n `div` 10))
 
 magicNum :: Int -> Int
-magicNum n | magicHelp(n) < 10 = magicHelp(n)
-           | otherwise = magicHelp(magicHelp(n))
+magicNum n | n < 10 = n
+           | otherwise = magicNum(magicHelp(n))
