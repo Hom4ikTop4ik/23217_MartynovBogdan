@@ -1,4 +1,3 @@
-import Text.XHtml (base)
 -- Задача 1
 reverse' :: [a] -> [a]
 reverse' a = foldl (\acc x -> (x:acc)) [] a
@@ -64,5 +63,5 @@ simHelper [] b = True
 simHelper ((x, y):xs) b = if (elem (y, x) b) then simHelper xs b else False
 
 
--- trans :: Eq a => [a] -> BinaryRelation a -> Bool
--- trans 
+trans :: Eq a => [a] -> BinaryRelation a -> Bool
+trans a b = if elem False [if (((x, y) `elem` b) && ((y,z) `elem` b) && (not((x,z) `elem` b))) then False else True | x<-a, y<-a, z<-a] then False else True
