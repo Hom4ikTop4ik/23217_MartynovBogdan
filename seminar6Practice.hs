@@ -10,8 +10,14 @@ onlyFuns [] acc = acc
 onlyFuns [_] acc = acc
 onlyFuns (x:y:arr) acc = onlyFuns arr (acc++[y])
 
+evenOnly' :: [a] -> [a]
+evenOnly' a = onlyFuns a []
+
+-- я узнал, что надо делать через foldl
 evenOnly :: [a] -> [a]
-evenOnly a = onlyFuns a [] 
+evenOnly arr = helperEvenOnly arr 1
+helperEvenOnly :: [a] -> Int -> [a]
+helperEvenOnly arr i = fst(   foldl (\(acc, i) x -> if i == 0 then (acc++[x], 1) else (acc++[x], 0) ) ([], i) arr   )
 
 
 -- Задача 3
