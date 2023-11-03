@@ -50,23 +50,23 @@ cleaner (x:xs) = (  if (elem x ["inc", "dec", "sqrt", "double", "halveIfPositive
 
 
 -- Задача 5
-optimizer'' :: [String] -> [String] -> [String]
-optimizer'' a acc = if (length a >= 2) then optimizer' a acc else if(length a == 1) then acc++a else acc
+-- optimizer'' :: [String] -> [String] -> [String]
+-- optimizer'' a acc = if (length a >= 2) then optimizer' a acc else if(length a == 1) then (acc ++ a) else acc
 
-optimizer' :: [String] -> [String] -> [String]
-optimizer' (x:y:arr) acc   | (x,y) == ("dec", "inc") = optimizer'' arr acc
-                           | (x,y) == ("inc", "dec") = optimizer'' arr acc
-                           | otherwise = optimizer'' (y:arr) (acc ++ [x])
-               --        if (x == []) then []
-               --   else if (y == []) then [x] 
-               --   else if (x == "dec" && y == "inc") then (if (length arr >= 2) then optimizer'(arr) else arr)
-               --   else if (x == "inc" && y == "dec") then (if (length arr >= 2) then optimizer'(arr) else arr)
-                  --   else [x] ++ (if (arr /= []) then optimizer' (y:arr) else [y])
+-- optimizer' :: [String] -> [String] -> [String]
+-- optimizer' (x:y:arr) acc   | (x,y) == ("dec", "inc") = optimizer'' arr acc
+--                            | (x,y) == ("inc", "dec") = optimizer'' arr acc
+--                            | otherwise = optimizer'' (y:arr) (acc ++ [x])
+--                --        if (x == []) then []
+--                --   else if (y == []) then [x] 
+--                --   else if (x == "dec" && y == "inc") then (if (length arr >= 2) then optimizer'(arr) else arr)
+--                --   else if (x == "inc" && y == "dec") then (if (length arr >= 2) then optimizer'(arr) else arr)
+--                   --   else [x] ++ (if (arr /= []) then optimizer' (y:arr) else [y])
 
 -- Задача 5*
 optimizer :: [String] -> [String]
 --               ↓ после очистки так же? — это ответ ↓; после очистки другое? — ↓ рекурсивная чистка 
-optimizer arr = optimizer'' arr []
+optimizer arr = y where (x:y) = reverse(foldl (\(first:acc) x -> if (((first, x) == ("inc", "dec")) || ((first, x) == ("dec", "inc"))) then acc else (x:(first:acc))) [""] arr)
 
 
 -- Задача 6. ↓ данный массив точек    ↓ функция       ответ ↓ — массив из точек выше f 
