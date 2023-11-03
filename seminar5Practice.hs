@@ -39,7 +39,7 @@ compute (x:xs) p = compute xs (computeHelper x p)
 
 -- основная ф-ция
 computeArr :: [String] -> [Double] -> [Double]
-computeArr comm xs = map' (compute (cleaner comm)) xs -- примерним ф-цию compute к каждому элементу xs и вернём полученный список
+computeArr arr xs = map' (compute (cleaner arr)) xs -- примерним ф-цию compute к каждому элементу xs и вернём полученный список
 --                                 ↑ он для безошибчного выполнения программы (убрать все несущ. команды)
 
 
@@ -50,24 +50,23 @@ cleaner (x:xs) = (  if (elem x ["inc", "dec", "sqrt", "double", "halveIfPositive
 
 
 -- Задача 5
--- добавил проверку: могу ли отделить x y от comm 
 optimizer'' :: [String] -> [String] -> [String]
 optimizer'' a acc = if (length a >= 2) then optimizer' a acc else if(length a == 1) then acc++a else acc
 
 optimizer' :: [String] -> [String] -> [String]
-optimizer' (x:y:comm) acc | (x,y) == ("dec", "inc") = optimizer'' comm acc
-                          | (x,y) == ("inc", "dec") = optimizer'' comm acc
-                          | otherwise = optimizer'' (y:comm) (x:acc)
+optimizer' (x:y:arr) acc   | (x,y) == ("dec", "inc") = optimizer'' arr acc
+                           | (x,y) == ("inc", "dec") = optimizer'' arr acc
+                           | otherwise = optimizer'' (y:arr) (acc ++ [x])
                --        if (x == []) then []
                --   else if (y == []) then [x] 
-               --   else if (x == "dec" && y == "inc") then (if (length comm >= 2) then optimizer'(comm) else comm)
-               --   else if (x == "inc" && y == "dec") then (if (length comm >= 2) then optimizer'(comm) else comm)
-                  --   else [x] ++ (if (comm /= []) then optimizer' (y:comm) else [y])
+               --   else if (x == "dec" && y == "inc") then (if (length arr >= 2) then optimizer'(arr) else arr)
+               --   else if (x == "inc" && y == "dec") then (if (length arr >= 2) then optimizer'(arr) else arr)
+                  --   else [x] ++ (if (arr /= []) then optimizer' (y:arr) else [y])
 
 -- Задача 5*
 optimizer :: [String] -> [String]
 --               ↓ после очистки так же? — это ответ ↓; после очистки другое? — ↓ рекурсивная чистка 
-optimizer comm = if (comm == optimizer'' comm []) then comm else optimizer (optimizer'' comm [])
+optimizer arr = optimizer'' arr []
 
 
 -- Задача 6. ↓ данный массив точек    ↓ функция       ответ ↓ — массив из точек выше f 
