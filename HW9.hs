@@ -40,7 +40,7 @@ func st x = case x of
         _ -> st 
         where (a, list1) = pop st; (b, list2) = pop list1
 
--- по факту, бесполезная функция
+-- почти бесполезная функция (я мог не её писать, а просто вставить этот же код в instance Parsable)
 parseString :: String -> [Instruction]
 parseString string' = let string = split string' ' ' in reverse(  foldl (\acc x -> (foo x):acc) [] string  ) 
                                             where foo x | strIsNumber x = Push (strToInt x) 
@@ -55,13 +55,8 @@ class Parsable a where
 
 instance Parsable String where
     parse :: String -> [Instruction]
-    parse string' = let string = split string' ' ' in reverse(  foldl (\acc x -> (foo x):acc) [] string  ) 
-                                            where foo x | strIsNumber x = Push (strToInt x) 
-                                                        | x == "+" = Add
-                                                        | x == "-" = Sub
-                                                        | x == "/" = Div
-                                                        | x == "*" = Mul
-                                                        | x == "^" = Pow
+    parse string = parseString string
+
 instance Parsable [String] where
     parse :: [String] -> [Instruction]
     parse strings = reverse( foldl (\acc x -> (foo x):acc) [] strings ) 
