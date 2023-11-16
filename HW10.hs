@@ -100,10 +100,12 @@ findMax tree    | tree == Nil = Nothing
 -- task 3
 treeSort :: Ord a => BinTree a -> [a]
 treeSort Nil = []
-treeSort tree = (treeSort l) ++ (repeat' tree) ++ (treeSort r) where Node{left=l, right=r, value=v, count=cnt} = tree
+treeSort tree = (treeSort l) ++ (repeat' tree) ++ (treeSort r) 
+                where Node{left=l, right=r, value=v, count=cnt} = tree
 
 repeat' ::  Ord a => BinTree a -> [a]
-repeat' tree = let Node{left=l, right=r, value=v, count=cnt} = tree in fst(foldl (\(acc, val) x -> (val:acc, val)) ([], v) [1..cnt]) 
+repeat' tree  = let Node{left=l, right=r, value=v, count=cnt} = tree in 
+                fst(foldl (\(acc, val) x -> (val:acc, val)) ([], v) [1..cnt]) 
 
 ---------
 -- task4
