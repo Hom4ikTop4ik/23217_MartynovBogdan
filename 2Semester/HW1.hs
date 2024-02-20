@@ -58,8 +58,12 @@ hasAllGrands p =
 
 -- task 3
 sumTwoInts :: IO ()
-sumTwoInts = do 
-        print "Vvedite 2 chisla cherez Enter:"
-        x <- readLn :: IO Int
-        y <- readLn :: IO Int
-        print (x + y)
+-- sumTwoInts = do 
+--         print "Vvedite 2 chisla cherez Enter:"
+--         x <- readLn :: IO Int
+--         y <- readLn :: IO Int
+--         print (x + y)
+sumTwoInts = readInt >>= (\x ->
+              readInt >>= (\y ->
+                print (x+y) ) )
+                  where readInt = readLn :: IO Int
