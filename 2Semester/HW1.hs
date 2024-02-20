@@ -63,7 +63,10 @@ sumTwoInts :: IO ()
 --         x <- readLn :: IO Int
 --         y <- readLn :: IO Int
 --         print (x + y)
-sumTwoInts = readInt >>= (\x ->
-              readInt >>= (\y ->
+sumTwoInts = (readLn :: IO Int) >>= (\x ->
+              (readLn :: IO Int) >>= (\y ->
                 print (x+y) ) )
-                  where readInt = readLn :: IO Int
+-- sumTwoInts = readInt >>= (\x ->
+--               readInt >>= (\y ->
+--                 print (x+y) ) )
+--                   where readInt = readLn :: IO Int
