@@ -17,8 +17,10 @@ data Person = Person {
 --     (Just x) >>= f = f x
 
 -- tests
+-- Women — left
+--  Men  — right
 {--
-Jane    Russ    Bruh    Mira
+Jane    Russ    Mira    Bruh
   \      /        \      /
     Alice           John
       \              /
@@ -30,9 +32,11 @@ jane    = Person "Jane"     "Smith"     Nothing Nothing
 russ    = Person "Russ"     "Cox"       Nothing Nothing
 miranda = Person "Miranda"  "Lee"       Nothing Nothing
 bruh    = Person "Bruh"     "Peterson"  Nothing Nothing
-alice   = Person "Alice"    "Cox"       (Just russ) (Just jane)
-john    = Person "John"     "Lee"       (Just bruh) (Just miranda)
-david   = Person "David"    "Lee"       (Just john) (Just alice)
+alice   = Person "Alice"    "Cox"       (Just jane) (Just russ)
+john    = Person "John"     "Lee"       (Just miranda) (Just bruh)
+johnBezBati = Person "John"  "Lee"       (Just miranda) Nothing
+david   = Person "David"    "Lee"       (Just alice) (Just john)
+davidBezDeda = Person "David" "Lee"      (Just alice) (Just johnBezBati)
 
 motFatPattern :: Person -> Maybe Person
 motFatPattern p = case mother p of -- mama
@@ -48,13 +52,20 @@ motFatMonad p = mother p >>= (\mama -> father mama)
 
 -- task 2
 hasAllGrands :: Person -> Maybe Person
-hasAllGrands p = 
-      mother p >>= (\mama -> mother mama)  >> 
-        mother p >>= (\mama -> father mama)  >>
-          father p >>= (\papa -> mother papa)  >> 
-            father p >>= (\papa -> father papa)
+-- hasAllGrands p = 
+--       mother p >>= (\mama -> mother mama)  >> 
+--         mother p >>= (\mama -> father mama)  >>
+--           father p >>= (\papa -> mother papa)  >> 
+--             father p >>= (\papa -> father papa)
+hasAllGrands p = do
+    mama <- mother p
+    papa <- father p
+    mama'sMother <- mother mama
+    mama'sFather <- father mama
+    papa'sMother <- mother papa
+    papa'sFather <- father papa
 
-
+    return mama'sMother
 
 -- task 3
 sumTwoInts :: IO ()
