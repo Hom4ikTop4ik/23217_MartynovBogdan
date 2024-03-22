@@ -6,13 +6,13 @@ even' a = (a `mod` 2) == 0
 odd' :: Int -> Bool
 odd' a = (a `mod` 2) /= 0
 
--- почистать N-ное число Фибоначчи
+-- посчитать N-ное число Фибоначчи
 fib :: Int -> Int
 fib 1 = 1
 fib 2 = 1
 fib n = fib(n-1) + fib(n-2)
 
--- почитать сумму нечётных чисел Фибоначи
+-- посчитать сумму нечётных чисел Фибоначи
 sumOddFib :: Int -> Int
 sumOddFib 1 = 1
 sumOddFib n | odd'(fib(n)) = sumOddFib(n-1) + fib(n)
@@ -21,8 +21,8 @@ sumOddFib n | odd'(fib(n)) = sumOddFib(n-1) + fib(n)
 -- magic number
 magicHelp :: Int -> Int
 magicHelp n | n < 10 = n
-            | otherwise = (n `mod` 10) + (magicHelp(n `div` 10))
+            | otherwise = (n `mod` 10) + (magicNum(n `div` 10))
 
 magicNum :: Int -> Int
-magicNum n | n < 10 = n
-           | otherwise = magicNum(magicHelp(n))
+magicNum n | magicHelp(n) < 10 = magicHelp(n)
+           | otherwise = magicHelp(magicHelp(n))
