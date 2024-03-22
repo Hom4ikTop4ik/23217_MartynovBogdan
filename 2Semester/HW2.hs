@@ -29,10 +29,16 @@ import Control.Monad.State
 
 fact' :: State (Int, Int) Int
 fact' = do
-    --                если возвращать step вместо step-1, в конце умножиться на 0
-    (step, answer)   <- state $ \(step, acc) -> ((step-1, acc), (step-1, acc*step))
+    -- если возвращать step вместо step-1, в конце умножиться на 0
+    
+    -- my version:
+    -- (step, answer)   <- state $ \(step, acc) -> ((step-1, acc), (step-1, acc*step))
 
-    -- "<="  if user isn't smart😁 and puts negative number into the func
+    -- by ChatGPT:
+    (step, answer) <- get
+    put (step-1, answer*step)
+
+    -- "<=" instead of "==" because user can be not smart😁 and puts negative number into the func
     if step <= 0 
         then return answer
         else do
@@ -42,15 +48,23 @@ fact :: Int -> Int
 fact n = evalState fact' (n, 1)
 
 
+da = [(-1),0,1,2,3,4,5,6,7,8,9]
+-- should be: [1,1,1,2,6,24,120,720,5040,40320,362'880]
+ne :: [Int]
+ne = foldl (\acc x -> acc ++ [fact x]) [] da
+testTask1 = ne
+
 
 -- TASK 2 (сделал сам, на основе TASK 1)
 -- (step, n1, n2)
 fibb' :: State (Int, Int, Int) Int
 fibb' = do
-    (step, a, b) <- state $ \(step, a1, a2) -> ((step, a1, a2), (step-1, a2, a1+a2))
-    -- a    <- state $ \(step, a1, a2) -> (  a1, (step,   a1, a2))
-    -- b    <- state $ \(step, a1, a2) -> (  a2, (step,   a1, a2))
-    -- step <- state $ \(step, a1, a2) -> (step, (step-1, a2, a1+a2))
+    -- my version:
+    -- (step, a, b) <- state $ \(step, a1, a2) -> ((step, a1, a2), (step-1, a2, a1+a2))
+    
+    -- by ChatGPT:
+    (step, a, b) <- get
+    put (step-1, b, a+b)
 
     -- "<"   if user isn't smart😁 and puts negative number into the func
     if step < 0 
@@ -66,10 +80,11 @@ fibb :: Int -> Int
 fibb n = evalState fibb' (n, 1, 0)
 
 -- проверка чисел:
-da = [0,1,2,3,4,5,6,7,8,9]
-ne :: [Int]
-ne = foldl (\acc x -> acc ++ [fibb x]) [] da
-
+wha = [0,1,2,3,4,5,6,7,8,9]
+-- should be: [0,1,1,2,3,5,8,13,21,34]
+becauze :: [Int]
+becauze = foldl (\acc x -> acc ++ [fibb x]) [] da
+testTask2 = becauze
 
 
 -- TASK 3
@@ -98,8 +113,12 @@ numberTree' Nil = return Nil
 numberTree' (Node left cur right) = do
     -- рекурсивно получили левое поддерево
     l <- numberTree' left
+    
     -- передать num, после чего увеличить его
-    c <- state $ \(num) -> (num, num+1)
+    -- c <- state $ \(num) -> (num, num+1)
+    c <- get
+    put (c+1)
+
     -- рекурсивно получили правое поддерево
     r <- numberTree' right
     -- вернули "склееное" дерево: левая ветка, основание, правая ветка
@@ -107,3 +126,15 @@ numberTree' (Node left cur right) = do
 
 numberTree :: BinTree () -> BinTree Integer
 numberTree tree = evalState (numberTree' tree) 0 -- нумерация с 0, мы ведь программисты
+
+testTask3'1 = numberTree Nil
+-- Nil
+
+testTask3'2 = numberTree (Node Nil () Nil)
+--Node Nil 0 Nil
+
+testTask3'3 = numberTree (Node (Node Nil () Nil) () (Node Nil () Nil))
+-- Node (Node Nil 0 Nil) 1 (Node Nil 2 Nil)
+
+testTask3'4 = numberTree (Node (Node Nil () Nil) () (Node (Node Nil () Nil) () Nil))
+-- Node (Node Nil 0 Nil) 1 (Node (Node Nil 2 Nil) 3 Nil)
