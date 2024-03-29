@@ -12,12 +12,9 @@ import Data.Char (chr, ord)
 -- chr (32) is " "
 -- ord (" ") is 32
 
--- if set 1000+ it will be very long
-howMuch = 100
-
--- array with zeros
+-- infinite array with zeros
 data' :: [Int]
-data' = [y | x <- [1..howMuch], y <- [0*x]]
+data' = [y | x <- [1..], y <- [0*x]]
 
 -- infinite buffer with '\0'
 out' :: String
@@ -40,7 +37,7 @@ main = do
 
     putStr $ evalState brainFck (program, in', data', out', {-dataPtr-} 0, {-programPtr-} 0, {-depth-}0, {-stack for cycles-}[])
 
-program = ">+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.>>>++++++++[<++++>-]<.>>>++++++++++[<+++++++++>-]<---.<<<<.+++.------.--------.>>+.>++++++++++."
+program = ">+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.>>>++++++++[<++++>-]<.>>>++++++++++[<+++++++++>-]<---.<<<<.+++.------.--------.>>+.>++++++++++." 
 
 in' = ""
 brainTest = evalState brainFck (program, in', data', out', {-dataPtr-} 0, {-programPtr-} 0, {-depth-}0, {-stack for cycles-}[])
@@ -77,7 +74,9 @@ brainHelper   (program, in',    data', out',   dataPtr, programPtr, depth, stack
     where command = program !! programPtr
 
 updData :: [Int] -> Int -> Int -> [Int]
-updData data' index upd = fst $ foldl (\(acc, i) x -> (if i == index then acc ++ [upd] else acc ++ [x], i+1)) ([], 0) data'
+-- updData data' index upd = fst $ foldl (\(acc, i) x -> (if i == index then acc ++ [upd] else acc ++ [x], i+1)) ([], 0) data'
+updData data' index upd = part1 ++ (upd:tail part2)
+    where (part1, part2) = splitAt index data'
 
 -- intMod x = (x + 2147483648) `mod` 4294967295 - 2147483648
 
