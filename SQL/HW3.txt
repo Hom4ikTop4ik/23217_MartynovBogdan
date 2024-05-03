@@ -1,0 +1,195 @@
+-- TASK 3.1
+-- Get all the unique wares in the alphabetic order with the minimal and maximal prices for each.
+SELECT WARE, MIN(PRICE) AS MIN, MAX(PRICE) AS MAX
+FROM PRODUCT
+GROUP BY WARE
+ORDER BY WARE ASC;
+
+
+
+-- TASK 3.2
+-- Show top 3 wares with the most difference between minimal and maximal prices.
+ 
+SELECT WARE --, MAX(PRICE) AS MAX, MIN(PRICE) AS MIN, MAX(PRICE) - MIN(PRICE) AS ANSWER
+FROM PRODUCT
+GROUP BY WARE
+ORDER BY (MAX(PRICE) - MIN(PRICE)) DESC
+LIMIT 3;
+
+
+
+-- TASK 3.3
+-- Show top 3 companies producing the largest number of different products.
+SELECT COMPANY, COUNT(DISTINCT PRODUCT.WARE) AS TOP
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON MANUFACTURER.BILL_ID == PRODUCT.BILL_ID
+GROUP BY COMPANY
+ORDER BY TOP DESC
+LIMIT 3;
+
+
+
+-- TASK 3.4
+-- Show the price of the most expensive ware for each category. 
+-- The result should be ordered by the category.
+
+SELECT /*PRODUCT.WARE,*/ MAX(PRICE) AS 'MAX PRICE', CATEGORY.CLASS AS CATEGORY, GROUP_CONCAT(PRICE) AS 'DEBUG [GROUP_CONCAT(PRICE)]'
+FROM CATEGORY
+INNER JOIN PRODUCT
+	ON PRODUCT.WARE == CATEGORY.WARE
+GROUP BY CATEGORY.CLASS
+ORDER BY CATEGORY.CLASS;
+
+
+
+-- TASK 3.5
+-- For each bill of materials show the company and lists of all the products and materials. 
+-- The result must contain exactly one row per bill and sorted by company. 
+-- Lists in the result must be represented as strings with values separated with comma.
+
+-- I'm not sure
+SELECT MANUFACTURER.BILL_ID, COMPANY, group_concat(DISTINCT PRODUCT.WARE), group_concat(DISTINCT MATERIAL.WARE)
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON PRODUCT.BILL_ID == MANUFACTURER.BILL_ID
+INNER JOIN MATERIAL
+	ON MATERIAL.BILL_ID == MANUFACTURER.BILL_ID
+GROUP BY MANUFACTURER.BILL_ID, COMPANY
+ORDER BY COMPANY ASC
+;
+
+-- DEBUG
+SELECT MANUFACTURER.BILL_ID, COMPANY, group_concat(PRODUCT.WARE), group_concat(MATERIAL.WARE)
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON PRODUCT.BILL_ID == MANUFACTURER.BILL_ID
+INNER JOIN MATERIAL
+	ON MATERIAL.BILL_ID == MANUFACTURER.BILL_ID
+GROUP BY MANUFACTURER.BILL_ID
+ORDER BY COMPANY
+;
+
+
+
+-- TASK 3.6
+-- Show the companies in the alphabetical order that producing larger number of different wares than consuming.
+SELECT MANUFACTURER.COMPANY, COUNT(DISTINCT PRODUCT.WARE) AS CNT_PROD, COUNT(DISTINCT MATERIAL.WARE) AS CNT_MAT
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON PRODUCT.BILL_ID == MANUFACTURER.BILL_ID
+INNER JOIN MATERIAL
+	ON MATERIAL.BILL_ID == MANUFACTURER.BILL_ID
+GROUP BY MANUFACTURER.COMPANY
+HAVING CNT_PROD > CNT_MAT
+-- HAVING COUNT(DISTINCT PRODUCT.WARE) CNT_PROD > COUNT(DISTINCT MATERIAL.WARE) CNT_MAT
+;
+
+-- -- DEBUG:
+-- SELECT *
+-- FROM MANUFACTURER
+-- INNER JOIN PRODUCT
+-- 	ON PRODUCT.BILL_ID == MANUFACTURER.BILL_ID
+-- INNER JOIN MATERIAL
+-- 	ON MATERIAL.BILL_ID == MANUFACTURER.BILL_ID
+-- ORDER BY COMPANY ASC;
+
+
+
+-- TASK 3.7
+-- Show all the companies that produce the same ware by more than 2 different ways (bills of materials).
+SELECT COMPANY--, group_concat(prod.WARE) AS 'WARES', group_concat(prod.BILL_ID) AS 'BILLS'
+-- SELECT DISTINCT COMPANY
+FROM MANUFACTURER man
+INNER JOIN PRODUCT prod
+	ON prod.BILL_ID == man.BILL_ID
+GROUP BY COMPANY, prod.WARE
+HAVING COUNT(prod.BILL_ID) > 2
+;
+
+
+-- TASK 3.8 (I'm not sure)
+-- Get all the unique companies producing at least one ware from each category in the set: Fuel, Food and Mineral.
+-- The query should be easily modifiable to use any set of categories.
+
+SELECT COMPANY, group_concat(DISTINCT PRODUCT.WARE), group_concat(DISTINCT CATEGORY.CLASS)
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON PRODUCT.BILL_ID == MANUFACTURER.BILL_ID
+INNER JOIN CATEGORY
+	ON CATEGORY.WARE == PRODUCT.WARE
+GROUP BY COMPANY
+HAVING COUNT(CASE WHEN CATEGORY.CLASS LIKE 'Fuel'    THEN 1 END) > 0 
+   AND COUNT(CASE WHEN CATEGORY.CLASS LIKE 'Food'    THEN 1 END) > 0
+   AND COUNT(CASE WHEN CATEGORY.CLASS LIKE 'Mineral' THEN 1 END) > 0
+;
+
+SELECT COMPANY, group_concat(DISTINCT PRODUCT.WARE), GROUP_CONCAT(DISTINCT CATEGORY.CLASS)
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON PRODUCT.BILL_ID == MANUFACTURER.BILL_ID
+INNER JOIN CATEGORY
+	ON CATEGORY.WARE == PRODUCT.WARE
+WHERE CATEGORY.CLASS IN ('Fuel', 'Food', 'Mineral')
+GROUP BY COMPANY
+HAVING COUNT(DISTINCT CATEGORY.CLASS) = 3; -- 3 - это мощность входного множества
+
+
+
+-- TASK 3.9
+-- For each company get the list of all the categories of materials used and the list of categories of products. 
+-- The result must contain exactly one row per company and each list must contain only the unique entries.
+
+-- SELECT man.COMPANY, group_concat(DISTINCT catMat.CLASS)AS 'MATERIAL CLASSES', group_concat(DISTINCT catMat.WARE)AS 'MATERIALS', group_concat(DISTINCT catProd.CLASS) AS 'PRODUCT CLASSES', group_concat(DISTINCT catProd.WARE) AS 'PRODUCTS'
+SELECT man.COMPANY, group_concat(DISTINCT catMat.CLASS) AS 'MATERIAL CLASSES', group_concat(DISTINCT catProd.CLASS) AS 'PRODUCT CLASSES'
+FROM MANUFACTURER man
+INNER JOIN MATERIAL mat
+	ON mat.BILL_ID == man.BILL_ID 
+INNER JOIN CATEGORY catMat
+	ON catMat.WARE == mat.WARE
+INNER JOIN PRODUCT prod
+	ON prod.BILL_ID == man.BILL_ID
+INNER JOIN CATEGORY catProd
+	ON catProd.WARE == prod.WARE
+GROUP BY man.COMPANY;
+
+
+
+-- TASK 10
+-- For each company show all the production chains (separate row per company/chain). 
+-- Here the production chain is defined as the intermediate product (ware) that both product 
+-- 	  for the one bill and material for other where both bills are owned by the same company. 
+-- Each chain must be presented in the following form (MATERIAL1,MATERIAL2,...)-[BILL_ID1]->(INTERMEDIATE_PRODUCT)-[BILL_ID2]->(PRODUCT1, PRODUCT2,...). 
+-- The result must be sorted by the company.
+
+-- Для каждой компании показаны все производственные цепочки (отдельная строка для каждой компании/цепочки). 
+-- Здесь производственная цепочка определяется как промежуточный продукт (изделия), который включает в себя как продукт для одного счета, 
+--     так и материал для другого, причем оба счета принадлежат одной и той же компании.
+-- Каждая цепочка должна быть представлена в следующем виде (MATERIAL1,MATERIAL2,...)-[BILL_ID1]->(ПРОМЕЖУТОЧНЫЙ_ПРОДУКТ)-[BILL_ID2]->(ПРОДУКТ1, ПРОДУКТ2,...).
+-- Результат должен быть отсортирован по компании.
+
+SELECT curMan.COMPANY, group_concat(matLeft.WARE) AS matLeft, '-', matLeft.BILL_ID, '->', curProd.WARE AS curProd, '-', prodRight.BILL_ID, '->', group_concat(prodRight.WARE) AS prodRight
+-- промежуточный продукт
+FROM PRODUCT curProd
+-- подключаю материалы для производства промежуточного продукта
+INNER JOIN MATERIAL matLeft
+	ON matLeft.BILL_ID == curProd.BILL_ID
+-- подключаю таблицу материалов, равных промежуточному продукту
+INNER JOIN MATERIAL curMat
+	ON curMat.WARE == curProd.WARE
+-- подключаю конечные продукты, создаваемые из промежуточного
+INNER JOIN PRODUCT prodRight
+	ON prodRight.BILL_ID == curMat.BILL_ID
+-- подключаю таблицу MANUFACTURER для промежуточного продукта 
+INNER JOIN MANUFACTURER curMan
+	ON curMan.BILL_ID == curProd.BILL_ID
+-- подключаю таблицу MANUFACTURER для конечного товара
+INNER JOIN MANUFACTURER man2
+	ON man2.BILL_ID == prodRight.BILL_ID
+	
+-- промежуточная и конечная компании должны быть одинаковы
+WHERE curMan.COMPANY == man2.COMPANY
+-- сгруппировать по чекам, по названияям проиводимых товаров
+GROUP BY curProd.BILL_ID, curProd.WARE
+-- сортировка по компании
+ORDER BY curMan.COMPANY ASC;

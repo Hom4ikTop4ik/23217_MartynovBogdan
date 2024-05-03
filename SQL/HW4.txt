@@ -1,0 +1,221 @@
+-- SELECT p.WARE, (SELECT GROUP_CONCAT(WARE)
+-- 				FROM (SELECT DISTINCT mt1.WARE
+-- 					  FROM MATERIAL mt1, PRODUCT p1
+-- 					  WHERE mt1.BILL_ID=p1.BILL_ID
+-- 						AND p1.WARE=p.WARE
+-- 					  ORDER BY mt1.WARE)
+-- 				) AS LIST
+-- FROM (SELECT DISTINCT WARE FROM PRODUCT) p
+-- ORDER BY p.WARE;
+-- 
+-- 
+-- 
+-- SELECT WARE, PRICE
+-- FROM PRODUCT
+-- ORDER BY PRICE DESC
+-- LIMIT 1;
+-- 
+-- 
+-- 
+-- SELECT DISTINCT m.COMPANY
+-- FROM MANUFACTURER m
+-- LEFT JOIN MATERIAL mt
+-- ON mt.BILL_ID=m.BILL_ID
+-- WHERE mt.BILL_ID IS NULL;
+-- 
+-- SELECT DISTINCT m.COMPANY
+-- FROM MANUFACTURER m
+-- WHERE NOT EXISTS (SELECT 1 FROM MANUFACTURER m1, MATERIAL mt1
+-- WHERE mt1.BILL_ID=m1.BILL_ID
+-- AND m.COMPANY=m1.COMPANY);
+-- 
+-- SELECT DISTINCT m.COMPANY
+-- FROM MANUFACTURER m
+-- WHERE (SELECT COUNT() FROM MANUFACTURER m1, MATERIAL mt1
+-- WHERE mt1.BILL_ID=m1.BILL_ID
+-- AND m.COMPANY=m1.COMPANY)=0;
+
+
+
+
+-- TASK 4.1
+-- Show the product with the largest average price over the market.
+-- I don't understand why I should use subQuery there
+SELECT WARE, AVG(PRICE) AS AVG_PRICE
+FROM PRODUCT
+GROUP BY WARE
+ORDER BY AVG_PRICE DESC
+LIMIT 1
+;
+
+
+
+
+-- TASK 4.2
+-- Show one sample ware from each category.
+-- SELECT group_concat(WARE) 
+SELECT CLASS, MIN(WARE), group_concat(WARE)
+FROM CATEGORY
+GROUP BY CLASS
+;
+-- variant 2:
+SELECT CLASS,
+       (SELECT WARE
+        FROM CATEGORY AS cat2
+        WHERE cat1.CLASS == cat2.CLASS
+        LIMIT 1) AS SAMPLE_WARE
+FROM (SELECT DISTINCT CLASS
+      FROM CATEGORY) AS cat1
+;
+
+    
+-- TASK 4.3
+-- Show the most expensive ware in each category and its price
+SELECT cat1.CLASS, 
+		-- 2 запроса ниже одинаковые, только "возвращают" разные столбцы
+		-- "верни" самый дорогой товар категории CLASS
+		(SELECT cat2.WARE 
+		FROM CATEGORY cat2
+		INNER JOIN PRODUCT pr2
+			ON pr2.WARE == cat2.WARE
+		WHERE cat2.CLASS == cat1.CLASS
+		ORDER BY pr2.PRICE DESC
+		LIMIT 1
+		) AS THE_MOST_EXPENSIVE_WARE,
+		-- "верни" цену самого дорогого товара категории CLASS
+		(SELECT pr2.PRICE
+		FROM CATEGORY cat2
+		INNER JOIN PRODUCT pr2
+			ON pr2.WARE == cat2.WARE
+		WHERE cat2.CLASS == cat1.CLASS
+		ORDER BY pr2.PRICE DESC
+		LIMIT 1
+		) AS MAX_PRICE
+-- убираю повторяющиеся категории CLASS:
+FROM (SELECT DISTINCT CLASS FROM CATEGORY) cat1
+;
+
+
+-- TASK 4.4
+-- Show the list of all the “greedy” companies, i.e. companies selling all the wares they are producing with
+-- prices at least 20% higher than average price for this product on the market.
+
+-- SELECT man0.COMPANY, pr0.WARE, pr0.PRICE, ROUND(1.2 * (SELECT AVG(pr1.PRICE) FROM PRODUCT pr1 WHERE pr1.WARE == pr0.WARE), 4) AS '1.2 * AVG'
+SELECT DISTINCT man0.COMPANY
+FROM MANUFACTURER man0, PRODUCT pr0
+WHERE pr0.BILL_ID == man0.BILL_ID 
+  AND pr0.PRICE   >= 1.2 * (SELECT AVG(pr1.PRICE) 
+						  FROM PRODUCT pr1 
+						  WHERE pr1.WARE == pr0.WARE)
+;
+
+
+
+-- TASK 4.5
+-- Show the companies that produce all the wares from any category. 
+-- Result should contain the company and the category and be sorted by the category. 
+-- If the company covers multiple categories in such way, there should be multiple rows for this company. 
+-- To prove that the result is correct enrich it with the additional column showing all the wares in the given category that the given company is actually producing.
+
+SELECT man0.COMPANY, cat0.CLASS, group_concat(DISTINCT pr0.WARE)
+FROM MANUFACTURER man0, PRODUCT pr0, CATEGORY cat0
+WHERE man0.BILL_ID == pr0.BILL_ID 
+  AND pr0.WARE == cat0.WARE
+
+GROUP BY man0.COMPANY, cat0.CLASS
+HAVING COUNT(DISTINCT pr0.WARE) >= (SELECT COUNT(DISTINCT cat1.WARE) FROM CATEGORY cat1 WHERE cat1.CLASS == cat0.CLASS)
+ORDER BY cat0.CLASS ASC, pr0.WARE ASC
+;
+
+
+
+-- TASK 4.6
+-- For each bill of material show the company, all the materials, products, total price of all the products considering their amounts. 
+-- There must be exactly one row per bill and the result must be ordered by company.
+
+SELECT man0.COMPANY AS 'COMPANY',
+		(SELECT group_concat(mat1.WARE) 
+			FROM MATERIAL mat1
+			WHERE mat1.BILL_ID == man0.BILL_ID
+			GROUP BY mat1.BILL_ID) AS 'MATERIALS',
+		(SELECT group_concat(pr1.WARE) 
+			FROM PRODUCT pr1
+			WHERE pr1.BILL_ID == man0.BILL_ID) AS 'PRODUCTS',
+		(SELECT sum(pr2.PRICE * pr2.AMOUNT) 
+			FROM PRODUCT pr2
+			WHERE pr2.BILL_ID == man0.BILL_ID) AS 'TOTAL PRICE'
+FROM MANUFACTURER man0
+
+GROUP BY man0.BILL_ID
+
+ORDER BY man0.COMPANY ASC
+;
+
+
+-- TASK 4.7
+-- For each product show:
+-- 1) all the unique sets of materials used in different variants of bills of materials
+-- 2) all the possible byproducts (i.e. additional products in the same bill of materials)
+-- There must be exactly one row per ware.
+
+SELECT DISTINCT pr0.WARE, 
+				(SELECT group_concat(mat1.WARE) 
+					FROM MATERIAL mat1
+					WHERE mat1.BILL_ID == pr0.BILL_ID)
+					AS 'MATERIALS',
+				(SELECT group_concat(pr1.WARE)
+					FROM PRODUCT pr1
+					WHERE pr1.BILL_ID == pr0.BILL_ID
+					  AND pr1.WARE <> pr0.WARE)
+					AS 'BY PRODUCTS'
+FROM PRODUCT pr0
+ORDER BY pr0.WARE
+;
+
+
+
+-- TASK 4.8
+-- Show all the companies with the largest number of different wares they producing 
+-- and their lists of wares in alphabetical order.
+SELECT myTable.COMPANY, 
+	   group_concat(DISTINCT myTable.WARE) AS 'PRODUCTS',
+	   COUNT(DISTINCT myTable.WARE) AS 'CNT'
+
+-- create my table ordered by pr0.WARE ("wares in alphabetical order")
+FROM (SELECT pr0.WARE, man0.COMPANY, man0.BILL_ID
+		FROM PRODUCT pr0, MANUFACTURER man0
+		WHERE pr0.BILL_ID == man0.BILL_ID
+		ORDER BY pr0.WARE) myTable
+
+-- work with myTable
+GROUP BY myTable.COMPANY
+HAVING COUNT(DISTINCT myTable.WARE) == (
+							SELECT MAX(subquery.CNT)
+							FROM (
+								SELECT COUNT(DISTINCT pr1.WARE) AS 'CNT'
+								FROM PRODUCT pr1
+								INNER JOIN MANUFACTURER man1
+									ON pr1.BILL_ID == man1.BILL_ID
+								GROUP BY man1.COMPANY
+							) AS subquery
+						)
+;
+
+-- DEBUG 1 (COMPANY. CNT_OF_PRODUCTS):
+SELECT man0.COMPANY, COUNT(DISTINCT pr0.WARE) AS CNT
+FROM PRODUCT pr0
+INNER JOIN MANUFACTURER man0
+	ON pr0.BILL_ID == man0.BILL_ID
+GROUP BY man0.COMPANY
+ORDER BY CNT DESC;
+
+-- DEBUG 2 (MAX_CNT_OF_PRODUCTS):
+SELECT MAX(subquery.CNT) AS MAX_CNT
+FROM (
+	SELECT COUNT(DISTINCT pr0.WARE) AS 'CNT'
+	FROM PRODUCT pr0
+	INNER JOIN MANUFACTURER man0
+		ON pr0.BILL_ID == man0.BILL_ID
+	GROUP BY man0.COMPANY
+) AS subquery;
+
