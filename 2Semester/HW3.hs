@@ -37,10 +37,18 @@ main = do
 
     putStr $ evalState brainFck (program, in', data', out', {-dataPtr-} 0, {-programPtr-} 0, {-depth-}0, {-stack for cycles-}[])
 
-program = ">+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.>>>++++++++[<++++>-]<.>>>++++++++++[<+++++++++>-]<---.<<<<.+++.------.--------.>>+.>++++++++++." 
+programHello = ">+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.>>>++++++++[<++++>-]<.>>>++++++++++[<+++++++++>-]<---.<<<<.+++.------.--------.>>+.>++++++++++." 
+programEmpty = ""
+programMandelbrot = ""
+programVlojen = ">>,>,>,<<[>+<[<+>-]].>.>."
 
 in' = ""
-brainTest = evalState brainFck (program, in', data', out', {-dataPtr-} 0, {-programPtr-} 0, {-depth-}0, {-stack for cycles-}[])
+inVlojen' = "abc"
+brainTestHello = evalState brainFck (programHello, in', data', out', {-dataPtr-} 0, {-programPtr-} 0, {-depth-}0, {-stack for cycles-}[])
+brainTestEmpty = evalState brainFck (programEmpty, in', data', out', 0, 0, 0, [])
+brainTestVlojen= evalState brainFck (programVlojen, inVlojen', data', out', 0, 0, 0, [])
+
+
 
 -- program, input buffer, data buffer, out buffer, dataPtr, programPtr, depth, stack for cycles 
 brainFck :: State (String, String, [Int], String, Int, Int, Int, [Int]) [Char]
