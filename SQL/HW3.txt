@@ -155,7 +155,7 @@ GROUP BY man.COMPANY;
 
 
 
--- TASK 10
+-- TASK 10 (~300 строк)
 -- For each company show all the production chains (separate row per company/chain). 
 -- Here the production chain is defined as the intermediate product (ware) that both product 
 -- 	  for the one bill and material for other where both bills are owned by the same company. 
@@ -193,3 +193,22 @@ WHERE curMan.COMPANY == man2.COMPANY
 GROUP BY curProd.BILL_ID, curProd.WARE
 -- сортировка по компании
 ORDER BY curMan.COMPANY ASC;
+
+
+
+SELECT com.COMPANY, '(' || coalesce(group_concat(DISTINCT m.WARE), ' ') || ')' || ' - [' || pr.BILL_ID || '] -> (' || m2.WARE || ') - ['
+      || pr2.BILL_ID || '] -> (' || group_concat(DISTINCT pr2.WARE) || ')' AS PRODUCTION_CHAINS
+FROM MANUFACTURER com 
+INNER JOIN PRODUCT pr
+   ON com.BILL_ID = pr.BILL_ID
+LEFT OUTER JOIN MATERIAL m
+   ON com.BILL_ID = m.BILL_ID
+INNER JOIN MATERIAL m2
+   ON pr.WARE = m2.WARE
+INNER JOIN MANUFACTURER com2
+   ON m2.BILL_ID = com2.BILL_ID AND
+      com.COMPANY = com2.COMPANY
+INNER JOIN PRODUCT pr2
+   ON m2.BILL_ID = pr2.BILL_ID
+GROUP BY pr.BILL_ID, pr2.BILL_ID
+ORDER BY com.COMPANY;
