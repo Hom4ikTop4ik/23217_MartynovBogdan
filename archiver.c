@@ -4,7 +4,6 @@
 #include <time.h>
 
 // === Constant and Macro Definitions ===
-#define DEBUG 1
 #define compressTree 1
 
 #ifndef min
