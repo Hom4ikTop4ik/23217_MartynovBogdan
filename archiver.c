@@ -3,10 +3,6 @@
 #include <string.h>
 #include <time.h>
 
-// for UNIX or LINUX (i'm not sure): 
-//#include <unistd.h> // узнать есть ли такой файл
-//#include <libgen.h> // отбросить путь до файла, оставив только название
-
 // === Constant and Macro Definitions ===
 #define DEBUG 1
 #define compressTree 1
@@ -32,6 +28,8 @@ typedef unsigned char word;
             (c = 0xff & val >> 1 * bitInByte); \
             (d = 0xff & val);
 
+// === Structs ===
+
 typedef struct STree {
     int value;
     struct STree* left;
@@ -51,16 +49,13 @@ typedef struct SVector {
     int cnt;
 } TVector;
 
-// ByteArray:
-// ARRay of bytes
-// CAPacity (in bytes)
-// CouNT of bits
 typedef struct SBitArray {
     word* arr;
     int cap;
     int cnt;
 } TBitArray;
 
+// === Functions ===
 
 void swapTree(TTree* *a, TTree* *b) {
     TTree* t = *a;
@@ -105,8 +100,7 @@ TBitArray bitArrayEmpty()
 void printIntArray(int* arr, int cnt)
 {
     for (int i = 0; i < cnt; i++)
-        if (arr[i] != 0)
-            printf("%2x - %d\n", i, arr[i]);
+        printf("%2x - %d\n", i, arr[i]);
 }
 
 void printByteArray(word* arr, int cnt)
@@ -127,7 +121,7 @@ void warning(const char* msg)
 }
 
 // insert value (1 word) in "vershina" like in stack
-// return index where value "lejit"
+// return index where pushed value "lejit"
 int vectorPush(TVector* vector, int value)
 {
     if (vector->cnt >= vector->cap)
@@ -141,7 +135,7 @@ int vectorPush(TVector* vector, int value)
 
     vector->arr[vector->cnt++] = value;
 
-    return vector->cnt - 1;
+    return vector->cnt - 1; // index of pushed elems
 }
 
 int vectorPop(TVector* vector) {
@@ -220,17 +214,17 @@ int* gysto(const char* fileName)
     for (int i = 0; i < differentBytes; i++)
         gystogram[i] = 0;
 
+    // file size
     fseek(file, 0, SEEK_END);
-    size_t data_size = ftell(file);
+    size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
     word* buffer = (word*)malloc(bufferSize);
 
     size_t done = 0;
-    while (done < data_size)
+    while (done < file_size)
     {
         int cnt = fread(buffer, sizeof(word), bufferSize, file);
-
         if (ferror(file) != 0)
             returnError("Error in file [gysto, while(done < dataSize)]\n");
 
@@ -238,11 +232,9 @@ int* gysto(const char* fileName)
             gystogram[buffer[i] % differentBytes]++;
 
         done += cnt;
-
         if (cnt < bufferSize)
             break; // eof
     }
-
     fclose(file);
     return gystogram;
 }
@@ -258,20 +250,15 @@ TTree* haffmanTree(int* gystogram)
             continue;
 
         arr[i] = malloc(sizeof(TTree));
-        *(arr[i]) = treeEmpty();
-        arr[i]->size = gystogram[i];
-        arr[i]->value = i;
+            *(arr[i]) = treeEmpty();
+            arr[i]->size = gystogram[i];
+            arr[i]->value = i;
 
         heapPush(&heap, arr[i]);
     }
 
     while (heap.cnt > 1)
     {
-        #ifdef DEBUG
-        if (heap.cnt == 3)
-            heap.cnt = heap.cnt;
-        #endif
-
         TTree* tree1 = heapPop(&heap);
         TTree* tree2 = heapPop(&heap);
 
@@ -327,25 +314,8 @@ void bitArrayPushByte(TBitArray* bitArray, int byteValue)
             returnError("realloc returned NULL (bitArrayPushBit)\n");
     }
 
-    for (int i = bitInByte * sizeof(word) - 1; i >= 0; i--)
+    for (int i = bitInByte *sizeof(word) -1;   i >= 0;   i--)
         bitArrayPushBit(bitArray, (byteValue >> i) & 1);
-
-    //int curBit = bitArray->cnt % (bitInByte * sizeof(word));
-    //int curByte = bitArray->cnt / (bitInByte * sizeof(word));
-
-    //int mask = 0;
-    //for (int i = 0; i < curBit; i++) {
-    //    mask <<= 1;
-    //    mask |= 1;
-    //}
-    //mask <<= ((bitInByte * sizeof(word)) - curBit);
-
-    //bitArray->arr[curByte] &= mask; // clear bits after curBit
-
-    //bitArray->arr[curByte] |= (byteValue >> curBit);
-    //bitArray->arr[curByte + 1] |= byteValue << ((bitInByte * sizeof(word)) - curBit);
-
-    //bitArray->cnt += (bitInByte * sizeof(word));
 }
 
 
@@ -401,8 +371,6 @@ void bitArrayWriteBit(TBitArray* bitArray, int value, int index)
     if (index < 0)
         returnError("Write bit before array [bitArrayWrireBit]\n");
     if (index >= bitArray->cnt) {
-        //returnError("Write bit after array [bitArrayWrireBit]\n");
-
         bitArrayPushBit(bitArray, value);
         return;
     }
@@ -445,59 +413,47 @@ int bitArrayReadBit(TBitArray* bitArray, int index)
         returnError("Read bit before array [bitArrayReadBit]\n");
     if (index >= bitArray->cnt)
         return 0;
-        /*returnError("Read bit after array [bitArrayReadBit]\n");*/
+        //returnError("Read bit after array [bitArrayReadBit]\n");
 
     int curByte = index / (bitInByte * sizeof(word));
     int curBit = index % (bitInByte * sizeof(word));
     
     int value = bitArray->arr[curByte];
-    value &= (1 << bitInByte*sizeof(word) -1 -curBit);
-    value >>= bitInByte*sizeof(word) -1 -curBit; // shift back
-
+        value &= (1 << bitInByte*sizeof(word) -1 -curBit);
+        value >>= bitInByte*sizeof(word) -1 -curBit; // shift back
     return value;
 }
 
 int bitArrayReadByte(TBitArray* bitArray, int index)
 {
     int value = 0;
-    for (int i = 0 ; i < bitInByte*sizeof(word); i++) 
-    {
+    for (int i = 0 ; i < bitInByte*sizeof(word); i++) {
         value <<= 1;
         value |= (1 & bitArrayReadBit(bitArray, index + i));
     }
-
     return value;
 }
 
 int bitArrayReadInt(TBitArray* bitArray, int index)
 {
     int value = 0;
+        value |= bitArrayReadByte(bitArray, index + (0 * bitInByte)) << (0 * bitInByte);
+        value |= bitArrayReadByte(bitArray, index + (1 * bitInByte)) << (1 * bitInByte);
+        value |= bitArrayReadByte(bitArray, index + (2 * bitInByte)) << (2 * bitInByte);
+        value |= bitArrayReadByte(bitArray, index + (3 * bitInByte)) << (3 * bitInByte);
 
-    value |= bitArrayReadByte(bitArray, index + (0 * bitInByte)) << (0 * bitInByte);
-    value |= bitArrayReadByte(bitArray, index + (1 * bitInByte)) << (1 * bitInByte);
-    value |= bitArrayReadByte(bitArray, index + (2 * bitInByte)) << (2 * bitInByte);
-    value |= bitArrayReadByte(bitArray, index + (3 * bitInByte)) << (3 * bitInByte);
-
-    //for (int i = 0; i < sizeof(int); i++)
-        //value |= (0xff & bitArrayReadByte(bitArray, index + i * bitInByte)) << i * bitInByte;
     return value;
 }
 
 TBitArray* haffmanTree2BitArray(TTree* tree, TBitArray** arrays)
 {
     TBitArray* ret = malloc(sizeof(TBitArray));
-    //ret->cap = sizeof(int); // 1 byte/word, int is 4 byte usually 
-    //ret->cnt = ret->cap * bitInByte * sizeof(word);
-    //ret->arr = malloc(ret->cap * sizeof(word));
     *ret = bitArrayEmpty();
+        bitArrayPushByte(ret, 0);
+        bitArrayPushByte(ret, 0);
+        bitArrayPushByte(ret, 0);
+        bitArrayPushByte(ret, 0);
 
-    bitArrayPushByte(ret, 0);
-    bitArrayPushByte(ret, 0);
-    bitArrayPushByte(ret, 0);
-    bitArrayPushByte(ret, 0);
-
-
-    
     TVector stack = vectorEmpty();
 
     int treeLen = treeTreversal_tree2array(tree, ret, arrays, &stack);
@@ -507,90 +463,13 @@ TBitArray* haffmanTree2BitArray(TTree* tree, TBitArray** arrays)
     return ret;
 }
 
-// returned value is 3 bytes:  (no, msg, no, bit)
-// messages:
-// 2 - error. Reading before array (bit_index < 0)
-// 3 - error. Reading after array (bit_index > array.len)
-// 4 - error. Array is NULL
-int bitArrayGetBit(TBitArray* bitArray, int bitPtr)
-{
-    if (bitPtr < 0)
-        return bytes2int(0, 2, 0, 0); // trying read bit before array
-    if (bitPtr >= bitArray->cnt)
-        return bytes2int(0, 3, 0, 0); // trying read bit after array
-    if (bitArray->arr == NULL)
-        return bytes2int(0, 4, 0, 0); // array is NULL
-
-    int curBit = bitArray->cnt % (bitInByte * sizeof(word));
-    int curByte = bitArray->cnt / (bitInByte * sizeof(word));
-
-    int mask = 0;
-    mask |= 1 << ((bitInByte * sizeof(word)) - 1 - curBit);
-
-    int bit = mask & bitArray->arr[curByte];
-
-    return bytes2int(0, 0, 0, bit);
-}
-
-// returned value is 3 bytes:  (no, msg, cnt, word)
-// messages:
-// 1 - not full word read.
-// 2 - error. Reading before array (bit_index < 0)
-// 3 - error. Reading after array (bit_index > array.len)
-// 4 - error. Array is NULL.
-// 5 - error. Error while reading bits
-int bitArrayGetByte(TBitArray* bitArray, int leftBitPtr)
-{
-    if (bitArray->arr == NULL)
-        return bytes2int(0, 4, 0, 0);
-
-    if (leftBitPtr >= bitArray->cnt)
-        return bytes2int(0, 3, 0, 0);
-
-    // [left; right)
-    int rightBitPtr = leftBitPtr + bitInByte * sizeof(word);
-    if (rightBitPtr <= 0)
-        return bytes2int(0, 2, 0, 0);
-
-    leftBitPtr = max(leftBitPtr, 0); // if (left < 0) left = 0
-    rightBitPtr = min(rightBitPtr, bitArray->cnt); // if (right > array.len) right = array.len; 
-
-    int cntBits = rightBitPtr - leftBitPtr;
-    int retByte = 0;
-
-    int realCnt = 0;
-
-    for (int i = 0; i < cntBits; i++)
-    {
-        int temp = bitArrayReadBit(bitArray, leftBitPtr + i);
-        int musor, msg, bit;
-        int2bytes(temp, musor, msg, musor, bit);
-
-        if (msg == 0) {
-            retByte <<= 1;
-            retByte |= (1 & bit);
-            realCnt++;
-        }
-    }
-
-    if (realCnt < cntBits)
-        return bytes2int(0, 1, realCnt, retByte);
-
-    // otherwise all good
-    return bytes2int(0, 0, cntBits, retByte);
-}
-
-
-// if (file exists) 
-//      return 1;
-// else 
-//      return 0;
+// if (file exists)  return 1;
+// else  return 0;
 int fileExists(char* fileName)
 {
     FILE* file = fopen(fileName, "rb");
     if (file == NULL)
         return 0;
-
     return 1;
 }
 
@@ -620,7 +499,8 @@ char* getOtherName()
     int i = 0;
     do {
         scanf("%c", &temp);
-        if (i < size && (temp != '\0') && (temp != '\n') && (temp != '\r')) {
+        if (i < size && (temp != '\0') && (temp != '\n') && (temp != '\r')) 
+        {
             str[i] = temp;
             i++;
         }
@@ -663,7 +543,8 @@ TBitArray* compress(const char* fileName)
     TTree* tree = haffmanTree(gystogram);
 
     TBitArray** arrays = malloc(differentBytes * sizeof(TBitArray*));
-    for (int i = 0; i < differentBytes; i++) {
+    for (int i = 0; i < differentBytes; i++) 
+    {
         arrays[i] = malloc(sizeof(TBitArray));
         *(arrays[i]) = bitArrayEmpty();
     }
@@ -689,9 +570,8 @@ TBitArray* compress(const char* fileName)
         bitArrayPushByte(compressedFile, 0);
 
         for (int i = 0; i < strLenght; i++)
-        {
             bitArrayPushByte(compressedFile, 0);
-        }
+
     int bitLenFile = 3*sizeof(int)*bitInByte + strLenght*bitInByte;
 
     // push tree len and haffman tree into file
@@ -745,9 +625,6 @@ TBitArray* createArchive(char** fileNames, int cnt)
 
     TBitArray* file = malloc(sizeof(TBitArray));
         *file = bitArrayEmpty();
-        //file->cap = fileLenght; // memory for archive's len and count of successful files
-        //file->cnt = file->cap * bitInByte * sizeof(word);
-        //file->arr = malloc(file->cap * sizeof(word));
 
         bitArrayPushByte(file, 0);
         bitArrayPushByte(file, 0);
@@ -758,7 +635,6 @@ TBitArray* createArchive(char** fileNames, int cnt)
         bitArrayPushByte(file, 0);
         bitArrayPushByte(file, 0);
         bitArrayPushByte(file, 0);
-
 
     for (int i = 0; i < cnt; i++)
     {
@@ -775,10 +651,8 @@ TBitArray* createArchive(char** fileNames, int cnt)
             realCnt++;
         }
     }
-
     bitArrayWriteInt(file, fileLenght, 0);
     bitArrayWriteInt(file, realCnt, bitInByte * sizeof(int));
-
     return file;
 }
 
@@ -805,10 +679,8 @@ void createFileFromBitArray(TBitArray* bitArray, char* fileName)
             buffer[j] = bitArrayReadByte(bitArray, i);
             i += bitInByte * sizeof(word);
         }
-
         fwrite(buffer, sizeof(word), j, file);
     }
-
     fclose(file);
 }
 
@@ -838,7 +710,6 @@ TTree* treeTreversal_array2tree(TBitArray* bitArray, int* ptr)
         else // if (bit == 1)
             returnError("Tree broke (right branch should be branch, but it's value) [treeTreversal_array2tree]\n");
     }
-
     return ret;
 }
 
@@ -846,7 +717,6 @@ TTree* bitArray2HaffmanTree(TBitArray* bitArray)
 {
     int ptr = 0;
     TTree* tree = treeTreversal_array2tree(bitArray, &ptr);
-
     return tree;
 }
 
@@ -868,16 +738,13 @@ TBitArray* readArchiveFromFile(char* archiveName)
     {
         int cnt = fread(buffer, sizeof(word), bufferSize, file);
 
-        for (int i = 0; (i < cnt) && (i < bufferSize); i++)
-        {
+        for (int i = 0; (i < cnt) && (i < bufferSize); i++) {
             int byte = buffer[i] & 0xff;
             bitArrayPushByte(bitArray, byte); 
         }
-
         if (cnt < bufferSize)
             break;
     }
-
     return bitArray;
 }
 
@@ -902,10 +769,6 @@ int treeTreversal_symbol(TTree* tree, TBitArray* bitArray, int* ptr)
 
 TBitArray* decompressFile(TBitArray* fileBitArray, TTree* tree)
 {
-    // принять bitArray со сжатым файлом и дерево Хаффмана
-    // разжать файл, создав новый bitArray
-    // вернуть bitArray с разжатым файлом
-
     TBitArray* ret = malloc(sizeof(TBitArray));
     *ret = bitArrayEmpty();
 
@@ -931,17 +794,6 @@ void decompressArchive(TBitArray* archiveBitArray)
     for (int i = 0; i < cntOfFiles; i++)
     {
         int filePtr = 0;
-        // считать длину сжатого файла
-        // считать длину названия файла
-        // считать название файла
-        
-        // считать длину дерева
-        // считать дерево
-        
-        // считать сжатый файл, запихать в bitArray
-        
-        // передать дерево и bitArray в decompressFile
-        // получить разжатый bitArray и передать в создание файла createFileFromBitArray
 
         int lenFile = bitArrayReadInt(archiveBitArray, ptr);
         ptr += bitInByte * sizeof(int);
@@ -1004,8 +856,6 @@ void decompressArchive(TBitArray* archiveBitArray)
 
         createFileFromBitArray(decompressedFile, nameFile);
     }
-
-
 }
 
 int main()
@@ -1013,11 +863,13 @@ int main()
     int mode = 1;
     if (mode == 0)
     {
-        char name[] = "F:/Programms/Bandicam/Capture/project.mp4";
-        char** link = malloc(sizeof(char*));
-        link[0] = name;
+        char name0[] = "F:/Programms/Bandicam/Capture/project.mp4";
+        char name1[] = "tests/archiver.bmp";
+        char** link = malloc(2*sizeof(char*));
+        link[0] = name0;
+        link[1] = name1;
 
-        TBitArray* temp = createArchive(link, 1);
+        TBitArray* temp = createArchive(link, 2);
 
         createFileFromBitArray(temp, "biba");
     }
