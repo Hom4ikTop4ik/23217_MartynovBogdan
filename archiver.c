@@ -21,13 +21,6 @@ typedef unsigned char word;
 #define bufferSize 1024
 #define fileNameBufferSize 1024
 
-#define bytes2int(a,b,c,d) ((a << 3 * bitInByte) | (b << 2 * bitInByte) | (c << 1 * bitInByte) | (d))
-#define int2bytes(val, a,b,c,d) \
-            (a = 0xff & val >> 3 * bitInByte); \
-            (b = 0xff & val >> 2 * bitInByte); \
-            (c = 0xff & val >> 1 * bitInByte); \
-            (d = 0xff & val);
-
 // === Structs ===
 
 typedef struct STree {
