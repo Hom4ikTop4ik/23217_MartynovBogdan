@@ -6,8 +6,8 @@ TTree* bitArray2HaffmanTree(TBitArray* bitArray);
 
 TBitArray* readArchiveFromFile(char* archiveName);
 
-int treeTreversal_symbol(TTree* tree, TBitArray* bitArray, int* ptr);
+int treeTreversal_symbol(FILE* archive, TTree* tree, int* ptr, int lenCompressedFile);
 
-TBitArray* decompressFile(TBitArray* fileBitArray, TTree* tree);
+int decompressFile(FILE* archive, TTree* tree, int lenCompressedFile, char** nameFile);
 
-void decompressArchive(TBitArray* archiveBitArray);
+void decompressArchive(char* name);

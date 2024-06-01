@@ -6,25 +6,37 @@ void example(int mode)
 {
     if (mode == 0)
     {
-        const char fileName0[] = "tests/project.mp4";
+        int cnt = 3;
+
+
+        const char fileName0[] = "da1.txt";
         int len0 = strlen(fileName0) + 1;
 
         char* name0 = malloc(len0 * sizeof(char));
         for (int i = 0; i < len0; i++)
             name0[i] = fileName0[i];
 
-        const char fileName1[] = "tests/archiver.bmp";
+        const char fileName1[] = "da2.txt";
         int len1 = strlen(fileName1) + 1;
 
         char* name1 = malloc(len1 * sizeof(char));
         for (int i = 0; i < len1; i++)
             name1[i] = fileName1[i];
 
-        char** link = malloc(2 * sizeof(char*));
+        const char fileName2[] = "da3.txt";
+        int len2 = strlen(fileName2) + 1;
+
+        char* name2 = malloc(len2 * sizeof(char));
+        for (int i = 0; i < len2; i++)
+            name2[i] = fileName2[i];
+
+        char** link = malloc(cnt * sizeof(char*));
+        //for (int i = 0; i < cnt; i++)
+            //link[i] = name1;
         link[0] = name0;
         link[1] = name1;
+        link[2] = name2;
 
-        TBitArray* fileBitArray = createArchive(link, 2);
 
         const char fileName[] = "biba";
         int len = strlen(fileName) + 1;
@@ -33,27 +45,26 @@ void example(int mode)
         for (int i = 0; i < len; i++)
             name[i] = fileName[i];
 
-        createFileFromBitArray(fileBitArray, &name);
 
-        freeBitArray(fileBitArray);
+        createArchive(&name, link, cnt);
+
         free(name0);
         free(name1);
-        free(name);
         free(link);
+        free(name);
     }
 
     else if (mode == 1)
     {
         const char archiveName[] = "biba";
-        int len = strlen(archiveName) + 1;
-        char* name = malloc(len * sizeof(char));
+        int len = strlen(archiveName);
+        char* name = malloc((len + 1) * sizeof(char));
         for (int i = 0; i < len; i++)
             name[i] = archiveName[i];
+        name[len] = '\0';
 
-        TBitArray* tempArchive = readArchiveFromFile(name);
-        decompressArchive(tempArchive);
+        decompressArchive(name);
 
-        freeBitArray(tempArchive);
         free(name);
     }
 }
@@ -67,10 +78,12 @@ void howToUse()
 
 int main(int argc, char* argv[])
 {
+    //example(1);
+
     //printf("\ncnt: %d\nargs:\n", argc);
     //for (int i = 0; i < argc; i++)
     //    printf("%s\n", argv[i]);
-
+    
     if (argc <= 2) { // without mode or without files
         howToUse();
         return 0;
@@ -129,17 +142,13 @@ int main(int argc, char* argv[])
                 continue;
             }
 
-            TBitArray* tempArchive = readArchiveFromFile(files[i]);
-            decompressArchive(tempArchive);
-            freeBitArray(tempArchive);
+            decompressArchive(files[i]);
         }
     }
     else if (mode == 1) // compress / encode
     {
-        TBitArray* fileBitArray = createArchive(files, cntOfFiles);
-        createFileFromBitArray(fileBitArray, &archiveName);
 
-        freeBitArray(fileBitArray);
+        createArchive(&archiveName, files, cntOfFiles);
         free(archiveName);
     }
         
@@ -147,7 +156,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < cntOfFiles; i++)
         free(files[i]);
     free(files);
-
+    
 
     return 0;
 }

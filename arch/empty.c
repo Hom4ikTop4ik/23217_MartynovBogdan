@@ -33,3 +33,12 @@ TBitArray bitArrayEmpty()
     bitArray.cnt = 0;
     return bitArray;
 }
+
+TBitArray bitArrayEmpty_tree()
+{
+    TBitArray bitArray;
+    bitArray.cap = maxTreeBitLen / bitInByte + (maxTreeBitLen % bitInByte > 0);
+    bitArray.cnt = 0;
+    bitArray.arr = malloc(bitArray.cap);
+    return bitArray;
+}

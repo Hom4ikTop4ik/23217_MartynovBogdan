@@ -37,12 +37,16 @@ TTree* heapPop(THeap* heap);
 void bitArrayPushBit(TBitArray* bitArray, int bitValue);
 void bitArrayPushByte(TBitArray* bitArray, int byteValue);
 
-void bitArrayWriteBit(TBitArray* bitArray, int value, int index);
-void bitArrayWriteByte(TBitArray* bitArray, int value, int index);
-void bitArrayWriteInt(TBitArray* bitArray, int value, int index);
-
 int bitArrayReadBit(TBitArray* bitArray, int index);
 int bitArrayReadByte(TBitArray* bitArray, int index);
 int bitArrayReadInt(TBitArray* bitArray, int index);
 
-void createFileFromBitArray(TBitArray* bitArray, char** fileName);
+void bitArrayWriteBit(TBitArray* bitArray, int value, int index);
+void bitArrayWriteByte(TBitArray* bitArray, int value, int index);
+void bitArrayWriteInt(TBitArray* bitArray, int value, int index);
+
+void fileWriteByte(FILE* file, byte value);
+void fileWriteInt(FILE* file, int value);
+
+void fileRewriteByte(FILE* file, byte value, long long pos);
+void fileRewriteInt(FILE* file, int value, long long pos);

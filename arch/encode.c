@@ -15,12 +15,12 @@ int* gysto(const char* fileName)
     size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    word* buffer = (word*)malloc(bufferSize);
+    byte* buffer = (byte*)malloc(bufferSize);
 
     size_t done = 0;
     while (done < file_size)
     {
-        int cnt = fread(buffer, sizeof(word), bufferSize, file);
+        int cnt = fread(buffer, sizeof(byte), bufferSize, file);
         if (ferror(file) != 0)
             returnError("Error in file [gysto, while(done < dataSize)]\n");
 
@@ -85,13 +85,13 @@ int treeTreversal_tree2array(TTree* tree, TBitArray* bitArray, TBitArray** array
     int temp = isLeaf(tree);
     if (temp == 1)
     {
-        bitArrayPushBit(bitArray, 1); // push "message": "now will word, after read word go up"
-        bitArrayPushByte(bitArray, tree->value); // push word
+        bitArrayPushBit(bitArray, 1); // push "message": "now will byte, after read byte go up"
+        bitArrayPushByte(bitArray, tree->value); // push byte
 
         for (int i = 0; i < stack->cnt; i++)
             bitArrayPushBit(arrays[tree->value], stack->arr[i]);
 
-        return 1 + bitInByte * sizeof(word);
+        return 1 + bitInByte * sizeof(byte);
     }
     else if (temp == 0)
     {
@@ -117,7 +117,8 @@ int treeTreversal_tree2array(TTree* tree, TBitArray* bitArray, TBitArray** array
 TBitArray* haffmanTree2BitArray(TTree* tree, TBitArray** arrays)
 {
     TBitArray* ret = malloc(sizeof(TBitArray));
-        *ret = bitArrayEmpty();
+    *ret = bitArrayEmpty_tree();
+        //*ret = bitArrayEmpty();
         bitArrayPushByte(ret, 0);
         bitArrayPushByte(ret, 0);
         bitArrayPushByte(ret, 0);
@@ -134,17 +135,12 @@ TBitArray* haffmanTree2BitArray(TTree* tree, TBitArray** arrays)
     return ret;
 }
 
-TBitArray* compress(const char* fileName)
+// return 1 if file writed
+int compress(FILE* file, const char* fileName)
 {
     int* gystogram = gysto(fileName);
     if (gystogram == NULL)
-        return NULL;
-
-    FILE* file = fopen(fileName, "rb");
-    if (file == NULL) {
-        printf("File name: %s\n", fileName);
-        returnError("Can't open file [compress]\n");
-    }
+        return 0;
 
     fileName = discardPath(fileName); // in archive I want save only name of file, not path
     int strLenght = strlen(fileName) + 1;
@@ -152,7 +148,7 @@ TBitArray* compress(const char* fileName)
     TTree* tree = haffmanTree(gystogram);
     free(gystogram);
 
-    TBitArray** arrays = malloc(differentBytes * sizeof(TBitArray*));
+    TBitArray** arrays = malloc(differentBytes * sizeof(TBitArray*));   
     for (int i = 0; i < differentBytes; i++)
     {
         arrays[i] = malloc(sizeof(TBitArray));
@@ -161,99 +157,129 @@ TBitArray* compress(const char* fileName)
     TBitArray* haffmanBitArray = haffmanTree2BitArray(tree, arrays);
     freeTree(tree);
 
-    TBitArray* compressedFile = malloc(sizeof(TBitArray));
-    *compressedFile = bitArrayEmpty();
+    long long fileStartPtr = ftell(file);
 
     // reserve memory for len compressed file, len uncompressed file, len its name and fileName
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
-    bitArrayPushByte(compressedFile, 0);
+    fileWriteInt(file, 0);
+        long long intSizeInFile = ftell(file) - fileStartPtr;
+    fileWriteInt(file, 0);
+    fileWriteInt(file, strLenght);
 
     for (int i = 0; i < strLenght; i++)
-        bitArrayPushByte(compressedFile, 0);
+        fileWriteByte(file, 0xff & fileName[i]);
 
-    int bitLenFile = 3 * sizeof(int) * bitInByte + strLenght * bitInByte;
+    int bitLenFile = (haffmanBitArray->cnt / bitInByte + (haffmanBitArray->cnt % bitInByte > 0)) + (3 * sizeof(int) + strLenght);
+    bitLenFile *= bitInByte;
 
     // push tree len and haffman tree into file
-    for (int i = 0; i < haffmanBitArray->cnt; i++)
+    for (int i = 0; i < haffmanBitArray->cnt;)
     {
-        int bit = bitArrayReadBit(haffmanBitArray, i);
-        bitArrayPushBit(compressedFile, bit);
-        bitLenFile++;
+        int byteValue = 0;
+        int cnt = min(bitInByte, haffmanBitArray->cnt -i);
+        for (int j = 0; j < cnt; j++)
+        {
+            byteValue <<= 1;
+            byteValue |= (1 & bitArrayReadBit(haffmanBitArray, i));
+            i++;
+        }
+        byteValue <<= (bitInByte - cnt);
+
+        fileWriteByte(file, byteValue);
     }
     freeBitArray(haffmanBitArray);
 
-    word buffer[bufferSize] = { 0 };
+    byte buffer[bufferSize] = { 0 };
+    TBitArray bufferSend = bitArrayEmpty();
+        // + differentBytes because max arrays[byte]->cnt is max tree depth, i.e. differentBytes
+        bufferSend.cap = (bufferSize + differentBytes + 1);
+        bufferSend.cnt = 0;
+        bufferSend.arr = malloc(bufferSend.cap);
 
     int byteCnt = 0; // count of bytes in uncompressed file
 
-    while (feof(file) == 0)
+    FILE* fileToCompress = fopen(fileName, "rb");
+
+    int bitLen = 0;
+    while (feof(fileToCompress) == 0)
     {
-        int cnt = fread(buffer, sizeof(word), bufferSize, file);
+        int cnt = fread(buffer, sizeof(byte), bufferSize, fileToCompress);
         byteCnt += cnt;
 
         for (int i = 0; (i < bufferSize) && (i < cnt); i++)
         {
+            // send from bufferSend to file
+            if (bufferSend.cnt >= bufferSize * bitInByte)
+            {
+                for (int i = 0; i < bufferSize; i++) 
+                    fileWriteByte(file, bufferSend.arr[i]);
+
+                for (int i = bufferSize; i < (bufferSend.cnt / bitInByte + (bufferSend.cnt % bitInByte > 0)); i++)
+                    bufferSend.arr[i - bufferSize] = bufferSend.arr[i];
+
+                bufferSend.cnt -= bufferSize * bitInByte;
+            }
+
+            // read byte from file and compress its
             int byte = buffer[i] & 0xff;
             for (int j = 0; j < arrays[byte]->cnt; j++)
             {
                 int bit = bitArrayReadBit(arrays[byte], j);
-                bitArrayPushBit(compressedFile, bit);
-                bitLenFile++;
+                bitArrayPushBit(&bufferSend, bit);
+                bitLen++;
             }
-            //bitLenFile += arrays[byte]->cnt;
         }
 
         if (cnt < bufferSize)
             break;
     }
+    bitLenFile += bitLen;
 
-    fclose(file);
+    for (int i = 0; i < bufferSend.cnt / bitInByte + (bufferSend.cnt % bitInByte > 0); i++)
+        fileWriteByte(file, bufferSend.arr[i]);
+
+    fclose(fileToCompress);
+    
+    free(bufferSend.arr);
 
     for (int i = 0; i < differentBytes; i++)
         freeBitArray(arrays[i]);
     free(arrays);
 
-    if (bitLenFile != compressedFile->cnt)
-        returnError("Error in compressing file: bitLenFile != compressedFile->cnt [compress]\n");
+    fileRewriteInt(file, bitLen, fileStartPtr);
+    fileRewriteInt(file, byteCnt, fileStartPtr + intSizeInFile);
 
-    bitArrayWriteInt(compressedFile, bitLenFile, 0);
-    bitArrayWriteInt(compressedFile, byteCnt, sizeof(int) * bitInByte);
-    bitArrayWriteInt(compressedFile, strLenght, 2 * sizeof(int) * bitInByte);
-    for (int i = 0; i < strLenght; i++)
-        bitArrayWriteByte(compressedFile, fileName[i], (3 * sizeof(int) + i) * bitInByte);
-
-    return compressedFile;
+    return 1;
 }
 
-TBitArray* createArchive(char** fileNames, int cnt)
+void createArchive(char** archiveName, char** fileNames, int cnt)
 {
+    if (archiveName == NULL) {
+        archiveName = malloc(2 * sizeof(char));
+        *(archiveName[0]) = '1';
+        *(archiveName[1]) = '\0';
+    }
+
     int realCnt = 0;
     int fileLenght = 2 * sizeof(int) * bitInByte; // for realCnt and fileLenght
 
-    TBitArray* file = malloc(sizeof(TBitArray));
-        *file = bitArrayEmpty();
+    while (fileExists(*archiveName) != 0) {
+        int res = doYouWantRewriteFile(*archiveName);
+        if (res == 2) {
+            return; // don't save file
+        }
+        else if (res == 1)
+            break; // rewrite file
+        else if (res == 0) {
+            free(*archiveName);
+            *archiveName = getOtherName();
+        }
+    }
+    FILE* file = fopen(*archiveName, "wb");
 
-        bitArrayPushByte(file, 0);
-        bitArrayPushByte(file, 0);
-        bitArrayPushByte(file, 0);
-        bitArrayPushByte(file, 0);
-
-        bitArrayPushByte(file, 0);
-        bitArrayPushByte(file, 0);
-        bitArrayPushByte(file, 0);
-        bitArrayPushByte(file, 0);
+    long long startArchivePos = ftell(file);
+    fileWriteInt(file, 0); // archive size
+    long long intSizeInFile = ftell(file) - startArchivePos;
+    fileWriteInt(file, 0); // count of files
 
     for (int i = 0; i < cnt; i++)
     {
@@ -262,22 +288,14 @@ TBitArray* createArchive(char** fileNames, int cnt)
             continue;
         }
 
-        TBitArray* temp = compress(fileNames[i]);
-        if (temp == NULL)
-            continue;
-        else
-        {
-            for (int j = 0; j < temp->cnt; j++) {
-                int bit = bitArrayReadBit(temp, j);
-                bitArrayPushBit(file, bit);
-            }
-            fileLenght += temp->cnt;
-            realCnt++;
-        }
-        freeBitArray(temp);
+        realCnt += compress(file, fileNames[i]);
     }
 
-    bitArrayWriteInt(file, fileLenght, 0);
-    bitArrayWriteInt(file, realCnt, bitInByte * sizeof(int));
-    return file;
+    fseek(file, 0, SEEK_END);
+    long long archSize = ftell(file);
+
+    fileRewriteInt(file, archSize, startArchivePos);
+    fileRewriteInt(file, realCnt , startArchivePos + intSizeInFile);
+
+    fclose(file);
 }

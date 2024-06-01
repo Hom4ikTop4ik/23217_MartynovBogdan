@@ -15,7 +15,7 @@ void warning(const char* msg) {
 int fileExists(char* fileName)
 {
     FILE* file = fopen(fileName, "rb");
-    
+
     int ret = 0;
     if (file == NULL)
         ret = 0;
@@ -199,51 +199,85 @@ TTree* heapPop(THeap* heap)
     return ret;
 }
 
-
-
 void bitArrayPushBit(TBitArray* bitArray, int bitValue)
 {
-    if (bitArray->cnt * (bitInByte * sizeof(word)) >= bitArray->cap)
+    if (bitArray->cnt * (bitInByte * sizeof(byte)) >= bitArray->cap)
     {
         bitArray->cap = 1 + 2 * bitArray->cap;
-        bitArray->arr = realloc(bitArray->arr, bitArray->cap * sizeof(word));
+        bitArray->arr = realloc(bitArray->arr, bitArray->cap * sizeof(byte));
 
         if (bitArray->arr == NULL)
             returnError("realloc returned NULL (bitArrayPushBit)\n");
     }
 
-    int curBit = bitArray->cnt % (bitInByte * sizeof(word));
-    int curByte = bitArray->cnt / (bitInByte * sizeof(word)); // word where at least 1 free bit
+    int curBit = bitArray->cnt % (bitInByte * sizeof(byte));
+    int curByte = bitArray->cnt / (bitInByte * sizeof(byte)); // byte where at least 1 free bit
 
     int mask = 0;
     for (int i = 0; i < curBit; i++) {
         mask <<= 1;
         mask |= 1;
     }
-    mask <<= ((bitInByte * sizeof(word)) - curBit);
+    mask <<= ((bitInByte * sizeof(byte)) - curBit);
 
     bitArray->arr[curByte] &= mask; // clear bits after curBit
-    bitArray->arr[curByte] |= (bitValue << ((bitInByte * sizeof(word)) - 1 - curBit)); // add bit to array
+    bitArray->arr[curByte] |= (bitValue << ((bitInByte * sizeof(byte)) - 1 - curBit)); // add bit to array
 
     bitArray->cnt++;
 }
 
 void bitArrayPushByte(TBitArray* bitArray, int byteValue)
 {
-    if ((bitArray->cnt) * (bitInByte * sizeof(word)) + 1/*word*/ >= bitArray->cap)
+    if ((bitArray->cnt) * (bitInByte * sizeof(byte)) + 1/*byte*/ >= bitArray->cap)
     {
         bitArray->cap = 1 + 2 * bitArray->cap;
-        bitArray->arr = realloc(bitArray->arr, bitArray->cap * sizeof(word));
+        bitArray->arr = realloc(bitArray->arr, bitArray->cap * sizeof(byte));
 
         if (bitArray->arr == NULL)
             returnError("realloc returned NULL (bitArrayPushBit)\n");
     }
 
-    for (int i = bitInByte * sizeof(word) - 1; i >= 0; i--)
+    for (int i = bitInByte * sizeof(byte) - 1; i >= 0; i--)
         bitArrayPushBit(bitArray, (byteValue >> i) & 1);
 }
 
+int bitArrayReadBit(TBitArray* bitArray, int index)
+{
+    if (index < 0)
+        returnError("Read bit before array [bitArrayReadBit]\n");
+    if (index >= bitArray->cnt)
+        return 0;
+    //returnError("Read bit after array [bitArrayReadBit]\n");
 
+    int curByte = index / (bitInByte * sizeof(byte));
+    int curBit = index % (bitInByte * sizeof(byte));
+
+    int value = bitArray->arr[curByte];
+    value &= (1 << bitInByte * sizeof(byte) - 1 - curBit);
+    value >>= bitInByte * sizeof(byte) - 1 - curBit; // shift back
+    return value;
+}
+
+int bitArrayReadByte(TBitArray* bitArray, int index)
+{
+    int value = 0;
+    for (int i = 0; i < bitInByte * sizeof(byte); i++) {
+        value <<= 1;
+        value |= (1 & bitArrayReadBit(bitArray, index + i));
+    }
+    return value;
+}
+
+int bitArrayReadInt(TBitArray* bitArray, int index)
+{
+    int value = 0;
+    value |= bitArrayReadByte(bitArray, index + (0 * bitInByte)) << (0 * bitInByte);
+    value |= bitArrayReadByte(bitArray, index + (1 * bitInByte)) << (1 * bitInByte);
+    value |= bitArrayReadByte(bitArray, index + (2 * bitInByte)) << (2 * bitInByte);
+    value |= bitArrayReadByte(bitArray, index + (3 * bitInByte)) << (3 * bitInByte);
+
+    return value;
+}
 
 void bitArrayWriteBit(TBitArray* bitArray, int value, int index)
 {
@@ -254,12 +288,12 @@ void bitArrayWriteBit(TBitArray* bitArray, int value, int index)
         return;
     }
 
-    int curByte = index / (bitInByte * sizeof(word));
-    int curBit = index % (bitInByte * sizeof(word));
+    int curByte = index / (bitInByte * sizeof(byte));
+    int curBit = index % (bitInByte * sizeof(byte));
 
-    int mask = ~(1 << (bitInByte * sizeof(word) - 1 - curBit)); // set zero in mask[curBit] and set one otherwise
+    int mask = ~(1 << (bitInByte * sizeof(byte) - 1 - curBit)); // set zero in mask[curBit] and set one otherwise
     bitArray->arr[curByte] &= mask;
-    bitArray->arr[curByte] |= (1 & value) << ((bitInByte * sizeof(word) - 1) - curBit); // set value in mask[curBit]
+    bitArray->arr[curByte] |= (1 & value) << ((bitInByte * sizeof(byte) - 1) - curBit); // set value in mask[curBit]
 
 }
 
@@ -287,76 +321,28 @@ void bitArrayWriteInt(TBitArray* bitArray, int value, int index)
 
 
 
-int bitArrayReadBit(TBitArray* bitArray, int index)
+void fileWriteByte(FILE* file, byte value)
 {
-    if (index < 0)
-        returnError("Read bit before array [bitArrayReadBit]\n");
-    if (index >= bitArray->cnt)
-        return 0;
-    //returnError("Read bit after array [bitArrayReadBit]\n");
-
-    int curByte = index / (bitInByte * sizeof(word));
-    int curBit = index % (bitInByte * sizeof(word));
-
-    int value = bitArray->arr[curByte];
-    value &= (1 << bitInByte * sizeof(word) - 1 - curBit);
-    value >>= bitInByte * sizeof(word) - 1 - curBit; // shift back
-    return value;
+    fwrite(&value, sizeof(byte), 1, file);
 }
 
-int bitArrayReadByte(TBitArray* bitArray, int index)
+void fileWriteInt(FILE* file, int value)
 {
-    int value = 0;
-    for (int i = 0; i < bitInByte * sizeof(word); i++) {
-        value <<= 1;
-        value |= (1 & bitArrayReadBit(bitArray, index + i));
-    }
-    return value;
+    fwrite(&value, sizeof(int), 1, file);
 }
 
-int bitArrayReadInt(TBitArray* bitArray, int index)
+void fileRewriteByte(FILE* file, byte value, long long pos)
 {
-    int value = 0;
-    value |= bitArrayReadByte(bitArray, index + (0 * bitInByte)) << (0 * bitInByte);
-    value |= bitArrayReadByte(bitArray, index + (1 * bitInByte)) << (1 * bitInByte);
-    value |= bitArrayReadByte(bitArray, index + (2 * bitInByte)) << (2 * bitInByte);
-    value |= bitArrayReadByte(bitArray, index + (3 * bitInByte)) << (3 * bitInByte);
-
-    return value;
+    long long curPos = ftell(file);
+    fseek(file, pos - curPos, SEEK_CUR);
+    fwrite(&value, sizeof(byte), 1, file);
+    fseek(file, curPos - pos, SEEK_CUR);
 }
 
-
-
-void createFileFromBitArray(TBitArray* bitArray, char** fileName)
+void fileRewriteInt(FILE* file, int value, long long pos)
 {
-    FILE* file;
-    while (fileExists(*fileName) != 0) {
-        int res = doYouWantRewriteFile(*fileName);
-        if (res == 2) {
-            return; // don't save file
-        }
-        else if (res == 1)
-            break; // rewrite file
-        else if (res == 0) {
-            free(*fileName);
-            *fileName = getOtherName();
-        }
-    }
-    file = fopen(*fileName, "wb");
-
-    word* buffer = (word*)malloc(bufferSize);
-    int i = 0;
-    for (i = 0; i < bitArray->cnt; )
-    {
-        int j = 0;
-        for (j = 0; (j < bufferSize) && (i < bitArray->cnt); j++) {
-            buffer[j] = bitArrayReadByte(bitArray, i);
-            i += bitInByte * sizeof(word);
-        }
-        fwrite(buffer, sizeof(word), j, file);
-    }
-
-    free(buffer);
-
-    fclose(file);
+    long long curPos = ftell(file);
+    fseek(file, pos - curPos, SEEK_CUR);
+    fwrite(&value, sizeof(int), 1, file);
+    fseek(file, curPos - pos - sizeof(int), SEEK_CUR);
 }

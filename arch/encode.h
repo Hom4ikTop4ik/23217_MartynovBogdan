@@ -8,6 +8,6 @@ int treeTreversal_tree2array(TTree* tree, TBitArray* bitArray, TBitArray** array
 
 TBitArray* haffmanTree2BitArray(TTree* tree, TBitArray** arrays);
 
-TBitArray* compress(const char* fileName);
+int compress(FILE* file, const char* fileName);
 
-TBitArray* createArchive(char** fileNames, int cnt);
+void createArchive(char** archiveName, char** fileNames, int cnt);

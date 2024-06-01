@@ -49,12 +49,12 @@ TBitArray* readArchiveFromFile(char* archiveName)
         returnError("malloc returned NULL [readArchiveFromFile]\n");
     *bitArray = bitArrayEmpty();
 
-    word* buffer = (word*)malloc(bufferSize);
+    byte* buffer = (byte*)malloc(bufferSize);
 
 
     while (feof(file) == 0)
     {
-        int cnt = fread(buffer, sizeof(word), bufferSize, file);
+        int cnt = fread(buffer, sizeof(byte), bufferSize, file);
 
         for (int i = 0; (i < cnt) && (i < bufferSize); i++) {
             int byte = buffer[i] & 0xff;
@@ -69,117 +69,158 @@ TBitArray* readArchiveFromFile(char* archiveName)
     return bitArray;
 }
 
-int treeTreversal_symbol(TTree* tree, TBitArray* bitArray, int* ptr)
+int treeTreversal_symbol(FILE* archive, TTree* tree, int* ptr, int lenCompressedFile)
 {
     if (tree == NULL)
-        returnError("Tree broke [treeTreversal_symbol]\n");
+        returnError("Tree broke - tree is NULL [treeTreversal_symbol].\n");
 
     if (isLeaf(tree) == 2)
-        returnError("Tree broke [treeTreversal_symbol]\n");
+        returnError("Tree broke - only 1 of 2 branches [treeTreversal_symbol].\n");
     if (isLeaf(tree) == 1)
         return (0xff & tree->value);
 
-    int bit = bitArrayReadBit(bitArray, *ptr);
+
+    if (*ptr == lenCompressedFile)
+        warning("Tree broke - not enough bits [treeTreversal_symbol].\n");
+
+    if (feof(archive) != 0) // if eof
+        returnError("Tree broke - not enough bits (eof) [treeTreversal_symbol].\n");
+
+    if (ferror(archive) != 0)
+        returnError("Error with archive file [treeTreversal_symbol].\n");
+
+    int byteValue = 0;
+    fread(&byteValue, sizeof(byte), 1, archive);
+
+    int shift = (*ptr) % bitInByte;
+    int bit = byteValue & (1 << (bitInByte -1 -shift));
+
     (*ptr)++;
-
-    if (bit == 0)
-        return treeTreversal_symbol(tree->left, bitArray, ptr);
-    else // if (bit == 1)
-        return treeTreversal_symbol(tree->right, bitArray, ptr);
-}
-
-TBitArray* decompressFile(TBitArray* fileBitArray, TTree* tree)
-{
-    TBitArray* ret = malloc(sizeof(TBitArray));
-    *ret = bitArrayEmpty();
-
-    int ptr = 0;
-    for (; ptr < fileBitArray->cnt; )
+    if (   (((*ptr) % bitInByte) != 0)   &&   ((*ptr) < lenCompressedFile)   )
     {
-        int symbol = 0xff & treeTreversal_symbol(tree, fileBitArray, &ptr);
-        bitArrayPushByte(ret, symbol);
+        int check = ungetc(byteValue, archive);
+        if (check != byteValue)
+            printf("%d %d\n", check, byteValue);
+            //warning("Liitle problem while reading archive - ungetc [treeTreversal_symbol].\n");
     }
 
-    return ret;
+    if (bit == 0)
+        return treeTreversal_symbol(archive, tree->left, ptr, lenCompressedFile);
+    else // if (bit == 1)
+        return treeTreversal_symbol(archive, tree->right, ptr, lenCompressedFile);
 }
 
-void decompressArchive(TBitArray* archiveBitArray)
+// user don't want save file — return 1
+// otherwise — return 0
+int decompressFile(FILE* archive, TTree* tree, int lenCompressedFile, char** nameFile)
 {
-    int ptr = 0;
-    int lenCompressedArchive = bitArrayReadInt(archiveBitArray, ptr);
-    ptr += bitInByte * sizeof(int);
+    while (fileExists(*nameFile) != 0) {
+        int res = doYouWantRewriteFile(*nameFile);
+        if (res == 2) {
+            return 1; // don't save file
+        }
+        else if (res == 1)
+            break; // rewrite file
+        else if (res == 0) {
+            free(*nameFile);
+            *nameFile = getOtherName();
+        }
+    }
+    FILE* file = fopen(*nameFile, "wb");
 
-    int cntOfFiles = bitArrayReadInt(archiveBitArray, ptr);
-    ptr += bitInByte * sizeof(int);
+    int i = 0;
+    while (i < lenCompressedFile)
+    {
+        byte byteValue = 0xff & treeTreversal_symbol(archive, tree, &i, lenCompressedFile);
+
+        fwrite(&byteValue, sizeof(byte), 1, file);
+    }
+
+    fclose(file);
+}
+
+void decompressArchive(char* archiveName)
+{
+    FILE* archive = fopen(archiveName, "rb");
+    if (archive == NULL)
+    {
+        printf("Archive name: %s\n", archiveName);
+        returnError("Can't open archive [readArchiveFromFile]\n");
+    }
+
+    int ptr = 0;
+    int lenCompressedArchive = 0;;
+    fread(&lenCompressedArchive, sizeof(int), 1, archive);
+    ptr += sizeof(int);
+
+    int cntOfFiles = 0;
+    fread(&cntOfFiles, sizeof(int), 1, archive);
+    ptr += sizeof(int);
 
     for (int i = 0; i < cntOfFiles; i++)
     {
         int filePtr = 0;
 
-        int lenFile = bitArrayReadInt(archiveBitArray, ptr);
-        ptr += bitInByte * sizeof(int);
-        filePtr += bitInByte * sizeof(int);
+        int lenFile = 0;
+        fread(&lenFile, sizeof(int), 1, archive);
+        ptr += sizeof(int);
 
-        int lenFileUncompressed = bitArrayReadInt(archiveBitArray, ptr);
-        ptr += bitInByte * sizeof(int);
-        filePtr += bitInByte * sizeof(int);
+        int lenFileUncompressed = 0;
+        fread(&lenFileUncompressed, sizeof(int), 1, archive);
+        ptr += sizeof(int);
 
-        int lenName = bitArrayReadInt(archiveBitArray, ptr);
-        ptr += bitInByte * sizeof(int);
-        filePtr += bitInByte * sizeof(int);
+        int lenName = 0;
+        fread(&lenName, sizeof(int), 1, archive);
+        ptr += sizeof(int);
+
         char* nameFile = malloc((lenName + 1) * sizeof(char));
-
-        for (int j = 0; j < lenName; j++) {
-            nameFile[j] = bitArrayReadByte(archiveBitArray, ptr);
-            ptr += bitInByte;
-            filePtr += bitInByte;
-        }
+        fread(nameFile, sizeof(char), lenName, archive);
         nameFile[lenName] = '\0';
+        ptr += lenName;
 
+        int lenTree = 0;
+        fread(&lenTree, sizeof(int), 1, archive);
+        ptr += sizeof(int);
 
-        int lenTree = bitArrayReadInt(archiveBitArray, ptr);
-        ptr += bitInByte * sizeof(int);
-        filePtr += bitInByte * sizeof(int);
+        int byteLenTree = lenTree / bitInByte + (lenTree % bitInByte > 0);
 
-        TBitArray* treeBitArray = malloc(sizeof(TBitArray));
-        *treeBitArray = bitArrayEmpty();
+        TBitArray treeBitArray = bitArrayEmpty();
+            treeBitArray.cap = byteLenTree;
+            treeBitArray.arr = malloc(treeBitArray.cap);
 
-        for (int j = 0; j < lenTree; j++)
-        {
-            int bit = bitArrayReadBit(archiveBitArray, ptr);
-            ptr++;
-            filePtr++;
-
-            bitArrayPushBit(treeBitArray, bit);
-        }
+        fread(treeBitArray.arr, sizeof(byte), byteLenTree, archive);
+        treeBitArray.cnt = lenTree;
+        ptr += byteLenTree;
 
         int tempPtr = 0;
-        TTree* tree = treeTreversal_array2tree(treeBitArray, &tempPtr);
-        freeBitArray(treeBitArray);
+        TTree* tree = treeTreversal_array2tree(&treeBitArray, &tempPtr);
+        free(treeBitArray.arr);
 
-        TBitArray* file = malloc(sizeof(TBitArray));
-        *file = bitArrayEmpty();
 
-        for (; filePtr < lenFile; )
+        int flag = 0;
+        // (1 different byte in file -> only 1 leaf in tree)
+        // (1 leaf in tree -> compressed file is empty)
+        // (so uncompressed file is leaf.value * lenOfUncompressedFile)
+        if (lenFile == 0) // size of compressed file is 0
         {
-            int bit = bitArrayReadBit(archiveBitArray, ptr);
-            ptr++;
-            filePtr++;
-            bitArrayPushBit(file, bit);
+            byte value = tree->value;
+            FILE* file = fopen(nameFile, "wb");
+            for (int i = 0; i < lenFileUncompressed; i++) 
+                fwrite(&value, sizeof(byte), 1, file);
+            fclose(file);
         }
+        else 
+            flag = decompressFile(archive, tree, lenFile, &nameFile);
+        
+                if (flag == 1)
+                    fseek(archive, (lenFile / bitInByte + ((lenFile % bitInByte) > 0)), SEEK_CUR);
+        
+        ptr += (lenFile / bitInByte + ((lenFile % bitInByte) > 0));
 
-        TBitArray* decompressedFile = decompressFile(file, tree);
-        freeBitArray(file);
         freeTree(tree);
-        int cntByte = decompressedFile->cnt / (bitInByte * sizeof(word));
 
-        if (cntByte != lenFileUncompressed) {
-            printf("File name: %s\n", nameFile);
-            warning("Size of file doesn't match\n");
-        }
-
-        createFileFromBitArray(decompressedFile, &nameFile);
-        freeBitArray(decompressedFile);
         free(nameFile);
     }
+
+    fclose(archive);
 }
