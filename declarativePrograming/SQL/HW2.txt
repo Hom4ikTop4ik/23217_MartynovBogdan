@@ -1,0 +1,237 @@
+-- TASK 2.1
+-- Get all the unique companies producing Drinking water in alphabetic order.
+
+-- SELECT *
+SELECT DISTINCT COMPANY 
+-- without DISTINCT 134 lines, with — 127
+FROM MANUFACTURER 
+INNER JOIN PRODUCT
+	ON MANUFACTURER.BILL_ID == PRODUCT.BILL_ID
+WHERE WARE == 'Drinking water'
+ORDER BY COMPANY ASC;
+				
+			
+			
+-- TASK 2.2
+-- Get all the companies producing wares in Raw food category. 
+-- Result must contain unique pairs of companies 
+-- 	 and wares producing by them from the given category 
+--   and must be sorted by the ware first and the company name next.
+
+-- SELECT *
+SELECT DISTINCT MANUFACTURER.COMPANY, PRODUCT.WARE
+-- 323 without VS 297 with
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON MANUFACTURER.BILL_ID == PRODUCT.BILL_ID
+INNER JOIN CATEGORY
+	ON PRODUCT.WARE == CATEGORY.WARE
+WHERE CATEGORY.CLASS == 'Raw food'
+ORDER BY PRODUCT.WARE, MANUFACTURER.COMPANY ASC;
+
+				
+				
+-- TASK 2.3
+-- Get all the unique wares in alphabetical order that can be produced from wares in Mineral category.
+
+-- SELECT *
+SELECT DISTINCT PRODUCT.WARE--, MATERIAL.WARE
+-- SELECT PRODUCT.WARE, MATERIAL.WARE
+-- 771 VS 5
+FROM PRODUCT
+INNER JOIN MATERIAL
+	ON MATERIAL.BILL_ID == PRODUCT.BILL_ID
+INNER JOIN CATEGORY
+	ON CATEGORY.WARE == MATERIAL.WARE
+WHERE CATEGORY.CLASS == 'Mineral';
+
+				
+				
+-- TASK 2.4
+-- Get all the unique companies producing both wares from Fuel and Food categories. 
+-- Use appropriate set operation in the query.
+
+SELECT COMPANY
+-- 115
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON MANUFACTURER.BILL_ID == PRODUCT.BILL_ID
+INNER JOIN CATEGORY
+	ON PRODUCT.WARE == CATEGORY.WARE
+WHERE CATEGORY.CLASS == 'Food'
+
+INTERSECT
+
+SELECT COMPANY
+FROM MANUFACTURER
+INNER JOIN PRODUCT
+	ON MANUFACTURER.BILL_ID == PRODUCT.BILL_ID
+INNER JOIN CATEGORY
+	ON PRODUCT.WARE == CATEGORY.WARE
+WHERE CATEGORY.CLASS == 'Fuel';
+				
+				
+				
+-- TASK 2.5
+-- Rewrite the previous query without using the set operations. Enrich the result with wares from both
+-- categories. It is acceptable to get multiple rows for companies producing multiple wares from any category
+-- mentioned, but the rows must be unique in result.
+
+-- SELECT DISTINCT *
+SELECT DISTINCT m1.COMPANY--, p1.WARE, p2.WARE 
+-- 115
+FROM MANUFACTURER m1, MANUFACTURER m2
+INNER JOIN PRODUCT p1
+	ON m1.BILL_ID == p1.BILL_ID
+INNER JOIN CATEGORY c1
+	ON p1.WARE == c1.WARE AND c1.CLASS == 'Fuel'
+INNER JOIN PRODUCT p2
+	ON m2.COMPANY == m1.COMPANY AND m2.BILL_ID == p2.BILL_ID
+INNER JOIN CATEGORY c2
+	ON p2.WARE == c2.WARE AND c2.CLASS == 'Food'
+-- ORDER BY m1.COMPANY ASC
+;
+
+
+
+-- TASK 2.6
+-- Get all the companies in alphabetical order that 
+-- producing at least 2 different wares from the same category.
+
+-- SELECT DISTINCT *
+-- SELECT DISTINCT m1.COMPANY, p1.WARE, p2.WARE, c1.CLASS
+SELECT DISTINCT m1.COMPANY
+-- 216 = 6^3
+FROM MANUFACTURER m1, MANUFACTURER m2
+INNER JOIN PRODUCT p1
+	ON m1.BILL_ID == p1.BILL_ID
+INNER JOIN CATEGORY c1
+	ON p1.WARE == c1.WARE
+INNER JOIN PRODUCT p2
+	ON m1.COMPANY == m2.COMPANY AND m2.BILL_ID == p2.BILL_ID
+INNER JOIN CATEGORY c2
+	ON p2.WARE == c2.WARE AND c1.CLASS == c2.CLASS
+WHERE p1.WARE <> p2.WARE
+-- ORDER BY m1.COMPANY ASC
+;
+
+
+
+-- TASK 2.7
+-- Get all the unique wares in alphabetical order 
+-- that can be produced using nothing besides wares in Mineral category.
+
+-- выбери все товары
+SELECT WARE
+FROM PRODUCT
+
+-- вычти товары, для производства которых нужны НЕминералы
+EXCEPT
+
+SELECT p.WARE
+-- список готовых товаров
+FROM PRODUCT p
+-- узнаём из каких ресурсов
+INNER JOIN MATERIAL mat
+	ON p.BILL_ID == mat.BILL_ID
+-- узнаём категорию ресурсов
+INNER JOIN CATEGORY cat
+	ON mat.WARE == cat.WARE
+-- выбираем лишь НЕ из минералов (то есть если хотя бы 1 ингридент это НЕминерал)
+WHERE cat.CLASS <> 'Mineral'
+ORDER BY WARE ASC;
+
+
+
+-- TASK 2.8
+-- Get all the unique companies in alphabetical order implementing production chains. The production
+-- chain is at least two subsequent bills of materials when the first bill producing ware that is in use as material
+-- in the second bill. Example of such chain in terms of wares is Grain->Meat cow->Meat.
+-- найди компании, которые организовали производственные цепочки (от 2 конвейеров). Например, Grain->Meat cow->Meat
+
+
+SELECT DISTINCT m3.COMPANY
+-- ищем компании, которые производят продукты ОДИН
+FROM MANUFACTURER m3
+-- INNER JOIN PRODUCT prod3
+-- 	ON prod3.BILL_ID == m3.BILL_ID
+	
+-- смотрим на список материалов ОДИН для этого продуктов ОДИН
+INNER JOIN MATERIAL mat3 
+	ON mat3.BILL_ID == m3.BILL_ID
+-- подключаем список чеков, в которых материалы ОДИН производятся
+INNER JOIN PRODUCT prod2
+	ON prod2.WARE == mat3.WARE
+-- узнаём какие компании производят материалы ОДИН / продукты ДВА
+-- подключаем только те, что производят продукты ОДИН
+INNER JOIN MANUFACTURER m2
+	ON m2.BILL_ID == prod2.BILL_ID --AND m2.COMPANY == m3.COMPANY
+-- узнаём материалы ДВА для продукта ДВА
+INNER JOIN MATERIAL mat2
+	ON mat2.BILL_ID == m2.BILL_ID
+	
+-- УДАЛИТЬ, т.к. неважжно откуда товар в начале конвеера:
+
+-- подключаем список чеков, в которых материалы ДВА производятся 
+-- INNER JOIN PRODUCT prod3
+-- 	ON prod3.WARE == mat2.WARE
+-- узнаём какие компании производят материалы ОДИН / продукты ДВА
+-- подключаем только те, что производят продукты ОДИН
+-- INNER JOIN MANUFACTURER m3
+-- 	ON m3.BILL_ID == prod3.BILL_ID AND m3.COMPANY == m2.COMPANY
+
+ORDER BY m3.COMPANY ASC;
+
+-- DEBUG (из чего и что производит компания X)
+SELECT m.BILL_ID, m.COMPANY, ' ', mat.WARE AS 'MATERIAL', '->', prod.WARE AS 'PRODUCT'
+FROM MANUFACTURER m
+
+INNER JOIN PRODUCT prod
+	ON prod.BILL_ID == m.BILL_ID
+INNER JOIN MATERIAL mat
+	ON mat.BILL_ID == m.BILL_ID
+WHERE m.COMPANY == 'Albany Molecular Research';
+
+
+
+
+-- TASK 2.9
+-- добавить вывод цепочки на экран
+-- + сортировка по центральному звену (prod2)
+
+-- нашёл странность у 'Albany Molecular Research': Water -> Drinking Water -> Water -> Dr...
+
+SELECT DISTINCT m1.COMPANY, prod3.WARE, '->', prod2.WARE, '->', prod1.WARE
+-- ищем компании, которые производят продукты ОДИН
+FROM MANUFACTURER m1
+INNER JOIN PRODUCT prod1
+	ON prod1.BILL_ID == m1.BILL_ID
+	
+-- смотрим на список материалов ОДИН для этого продуктов ОДИН
+INNER JOIN MATERIAL mat1 
+	ON mat1.BILL_ID == m1.BILL_ID
+-- подключаем список чеков, в которых материалы ОДИН производятся
+INNER JOIN PRODUCT prod2
+	ON prod2.WARE == mat1.WARE
+-- узнаём какие компании производят материалы ОДИН / продукты ДВА
+-- подключаем только те, что производят продукты ОДИН
+INNER JOIN MANUFACTURER m2
+	ON m2.BILL_ID == prod2.BILL_ID AND m2.COMPANY == m1.COMPANY
+	
+-- узнаём материалы ДВА для продукта ДВА
+INNER JOIN MATERIAL mat2
+	ON mat2.BILL_ID == m2.BILL_ID
+-- подключаем список чеков, в которых материалы ДВА производятся
+INNER JOIN PRODUCT prod3
+	ON prod3.WARE == mat2.WARE
+	
+-- УДАЛИТЬ, т.к. неважжно откуда товар в начале конвеера:
+
+-- узнаём какие компании производят материалы ОДИН / продукты ДВА
+-- подключаем только те, что производят продукты ОДИН
+-- INNER JOIN MANUFACTURER m3
+-- 	ON m3.BILL_ID == prod3.BILL_ID AND m3.COMPANY == m2.COMPANY
+
+-- строка ниже, если не хочется циклов приведённых выше (Water -> Drink Water -> Water...)	
+-- WHERE prod1.WARE <> prod2.WARE AND prod2.WARE <> prod3.WARE AND prod3.WARE <> prod1.WARE
+ORDER BY m1.COMPANY, prod2.WARE ASC;

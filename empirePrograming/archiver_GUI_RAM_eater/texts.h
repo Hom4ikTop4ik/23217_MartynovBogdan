@@ -1,0 +1,6 @@
+#define text_instruction "Instruction:"
+#define text_instructionSteps "1. Drop files;\n2. Input archive name if you want compress files;\n3. Press button: compress or decompress"
+#define text_archive "Input archive name:"
+#define text_messages "Messages:"
+#define text_files "Files:"
+#define text_empty ""
